@@ -6,17 +6,8 @@ func TestDepSimple(t *testing.T) {
 	var st SourceTree
 	st.ProcessDirectory("test_files/simple")
 
-	findFile := func(files []*file, path string) *file {
-		for _, file := range files {
-			if file.path == path {
-				return file
-			}
-		}
-		return nil
-	}
-
-	mainFile := findFile(st.sources, "test_files/simple/main.cc")
-	aFile := findFile(st.sources, "test_files/simple/a.cc")
+	mainFile := findFile(st.sources, "main.cc")
+	aFile := findFile(st.sources, "a.cc")
 
 	switch {
 	case mainFile == nil:
@@ -48,10 +39,10 @@ func TestFileDepList(t *testing.T) {
 		},
 	}
 
-	countEntries := func(list []string, target string) int {
+	countEntries := func(list []*file, target string) int {
 		count := 0
 		for _, val := range list {
-			if val == target {
+			if val.path == target {
 				count++
 			}
 		}

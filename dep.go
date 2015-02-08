@@ -138,6 +138,15 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 	return nil
 }
 
+func findFile(files []*file, path string) *file {
+	for _, file := range files {
+		if filepath.Base(file.path) == path {
+			return file
+		}
+	}
+	return nil
+}
+
 type file struct {
 	path       string
 	deps       []*file
@@ -150,21 +159,21 @@ type file struct {
 // DepList will return the list of paths for all dependencies of f. This
 // call modifies shared state in the owning SourceTree, so it should not
 // be called concurrently on multiple files.
-func (f *file) DepList() []string {
+func (f *file) DepList() []*file {
 	dl := f.generateDepList()
 	f.unvisitDeps()
 	return dl
 }
 
-func (f *file) generateDepList() []string {
+func (f *file) generateDepList() []*file {
 	f.visited = true
-	var dl []string
+	var dl []*file
 
 	for _, dep := range f.deps {
 		if dep.visited {
 			continue
 		}
-		dl = append(dl, dep.path)
+		dl = append(dl, dep)
 		dl = append(dl, dep.generateDepList()...)
 	}
 	return dl
