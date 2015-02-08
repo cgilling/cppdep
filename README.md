@@ -13,6 +13,5 @@ within the source tree.
 * All includes of files within the source tree use double quotes rather that angle brackets
 
 ## TODO
-* Allow for linking to system libraries
 * Allow for code generation steps
 * Automatic detection of main files
