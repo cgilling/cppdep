@@ -19,7 +19,7 @@ func TestSimpleCompile(t *testing.T) {
 	var st SourceTree
 	st.ProcessDirectory("test_files/simple")
 
-	mainFile := findFile(st.sources, "main.cc")
+	mainFile := st.FindSource("main.cc")
 
 	c := &Compiler{OutputDir: outputDir}
 

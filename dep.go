@@ -21,6 +21,7 @@ type SourceTree struct {
 	// process dependencies. Default is 1.
 	Concurrency int
 
+	mu      sync.Mutex
 	sources []*File
 }
 
@@ -61,7 +62,11 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 			return nil
 		}
 
-		file := &File{Path: path, Type: HeaderType}
+		file := &File{
+			Path: path,
+			Type: HeaderType,
+			stMu: &st.mu,
+		}
 		seen[path] = file
 		for _, sourceExt := range st.SourceExts {
 			if ext == sourceExt {
@@ -138,9 +143,9 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 	return nil
 }
 
-func findFile(files []*File, path string) *File {
-	for _, file := range files {
-		if filepath.Base(file.Path) == path {
+func (st *SourceTree) FindSource(name string) *File {
+	for _, file := range st.sources {
+		if filepath.Base(file.Path) == name {
 			return file
 		}
 	}
@@ -153,13 +158,18 @@ type File struct {
 	Type       int
 	SourcePair *File
 
+	// stMu used to ensure that only one goroutine is traversing the dependency
+	// tree at any one time.
+	stMu    *sync.Mutex
 	visited bool
 }
 
-// DepList will return the list of paths for all dependencies of f. This
-// call modifies shared state in the owning SourceTree, so it should not
-// be called concurrently on multiple files.
+// DepList will return the list of paths for all dependencies of f.
 func (f *File) DepList() []*File {
+	if f.stMu != nil {
+		f.stMu.Lock()
+		defer f.stMu.Unlock()
+	}
 	dl := f.generateDepList()
 	f.unvisitDeps()
 	return dl

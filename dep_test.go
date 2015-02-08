@@ -6,8 +6,8 @@ func TestDepSimple(t *testing.T) {
 	var st SourceTree
 	st.ProcessDirectory("test_files/simple")
 
-	mainFile := findFile(st.sources, "main.cc")
-	aFile := findFile(st.sources, "a.cc")
+	mainFile := st.FindSource("main.cc")
+	aFile := st.FindSource("a.cc")
 
 	switch {
 	case mainFile == nil:
