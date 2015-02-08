@@ -12,37 +12,37 @@ func TestDepSimple(t *testing.T) {
 	switch {
 	case mainFile == nil:
 		t.Fatalf("main.cc not among source list")
-	case mainFile.typ != SourceType:
+	case mainFile.Type != SourceType:
 		t.Errorf("Expected main.cc to be source type")
 	case aFile == nil:
 		t.Fatalf("a.cc not amoung source list")
-	case len(mainFile.deps) != 1:
-		t.Errorf("Expected to find one dependency for main.cc, found %d", len(mainFile.deps))
-	case mainFile.deps[0].path != "test_files/simple/a.h":
+	case len(mainFile.Deps) != 1:
+		t.Errorf("Expected to find one dependency for main.cc, found %d", len(mainFile.Deps))
+	case mainFile.Deps[0].Path != "test_files/simple/a.h":
 		t.Errorf("Did not find a.h as dependency for main.cc")
-	case mainFile.deps[0].typ != HeaderType:
+	case mainFile.Deps[0].Type != HeaderType:
 		t.Errorf("Expected a.h to be header type")
-	case mainFile.deps[0].sourcePair != aFile:
+	case mainFile.Deps[0].SourcePair != aFile:
 		t.Errorf("source pair not found for a.h")
 	}
 }
 
 func TestFileDepList(t *testing.T) {
-	a := &file{path: "a.h"}
-	b := &file{path: "b.h", deps: []*file{a}}
-	a.deps = []*file{b}
-	root := &file{
-		path: "main.cc",
-		deps: []*file{
+	a := &File{Path: "a.h"}
+	b := &File{Path: "b.h", Deps: []*File{a}}
+	a.Deps = []*File{b}
+	root := &File{
+		Path: "main.cc",
+		Deps: []*File{
 			a,
 			b,
 		},
 	}
 
-	countEntries := func(list []*file, target string) int {
+	countEntries := func(list []*File, target string) int {
 		count := 0
 		for _, val := range list {
-			if val.path == target {
+			if val.Path == target {
 				count++
 			}
 		}

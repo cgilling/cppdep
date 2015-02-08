@@ -16,7 +16,7 @@ type Compiler struct {
 	OutputDir string
 }
 
-func (c *Compiler) Compile(file *file) (path string, err error) {
+func (c *Compiler) Compile(file *File) (path string, err error) {
 	deps := file.DepList()
 	deps = append(deps, file)
 
@@ -24,10 +24,10 @@ func (c *Compiler) Compile(file *file) (path string, err error) {
 	for _, dep := range deps {
 		var path string
 		var err error
-		if dep.typ == SourceType {
+		if dep.Type == SourceType {
 			path, err = c.makeObject(dep)
-		} else if dep.typ == HeaderType && dep.sourcePair != nil {
-			path, err = c.makeObject(dep.sourcePair)
+		} else if dep.Type == HeaderType && dep.SourcePair != nil {
+			path, err = c.makeObject(dep.SourcePair)
 		}
 		if err != nil {
 			return "", err
@@ -37,19 +37,19 @@ func (c *Compiler) Compile(file *file) (path string, err error) {
 	return c.makeBinary(file, objList)
 }
 
-func (c *Compiler) makeObject(file *file) (path string, err error) {
-	base := filepath.Base(file.path)
+func (c *Compiler) makeObject(file *File) (path string, err error) {
+	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")
 	objectPath := filepath.Join(c.OutputDir, base[:dotIndex]+".o")
-	cmd := exec.Command("g++", "-o", objectPath, "-c", file.path)
+	cmd := exec.Command("g++", "-o", objectPath, "-c", file.Path)
 	cmd.Stdout = os.Stdout
 	cmd.Stdout = os.Stderr
 	err = cmd.Run()
 	return objectPath, err
 }
 
-func (c *Compiler) makeBinary(file *file, objectPaths []string) (path string, err error) {
-	base := filepath.Base(file.path)
+func (c *Compiler) makeBinary(file *File, objectPaths []string) (path string, err error) {
+	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")
 	binaryPath := filepath.Join(c.OutputDir, base[:dotIndex])
 	cmd := exec.Command("g++", "-o", binaryPath)
