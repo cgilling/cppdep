@@ -15,3 +15,4 @@ within the source tree.
 ## TODO
 * Allow for linking to system libraries
 * Allow for code generation steps
+* Automatic detection of main files
