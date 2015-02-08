@@ -21,9 +21,16 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 	deps = append(deps, file)
 
 	var objList []string
+	var libList []string
 	for _, dep := range deps {
 		var path string
 		var err error
+		if dep.Libs != nil {
+			libList = append(libList, dep.Libs...)
+		}
+		if dep.SourcePair != nil && dep.SourcePair.Libs != nil {
+			libList = append(libList, dep.SourcePair.Libs...)
+		}
 		if dep.Type == SourceType {
 			path, err = c.makeObject(dep)
 		} else if dep.Type == HeaderType && dep.SourcePair != nil {
@@ -34,7 +41,7 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 		}
 		objList = append(objList, path)
 	}
-	return c.makeBinary(file, objList)
+	return c.makeBinary(file, objList, libList)
 }
 
 func (c *Compiler) makeObject(file *File) (path string, err error) {
@@ -48,11 +55,12 @@ func (c *Compiler) makeObject(file *File) (path string, err error) {
 	return objectPath, err
 }
 
-func (c *Compiler) makeBinary(file *File, objectPaths []string) (path string, err error) {
+func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path string, err error) {
 	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")
 	binaryPath := filepath.Join(c.OutputDir, base[:dotIndex])
 	cmd := exec.Command("g++", "-o", binaryPath)
+	cmd.Args = append(cmd.Args, libList...)
 	cmd.Args = append(cmd.Args, objectPaths...)
 	cmd.Stdout = os.Stdout
 	cmd.Stdout = os.Stderr

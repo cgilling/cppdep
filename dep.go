@@ -17,6 +17,11 @@ type SourceTree struct {
 	HeaderExts  []string
 	SourceExts  []string
 
+	// Libraries is a map that defines library header includes to the linker statement needed.
+	// For example if #include <zlib.h> were in a file, this would be the approriate value to
+	// be in the dictionary {"zlib.h": "-lz"}
+	Libraries map[string]string
+
 	// Concurrency defines the number of goroutines used to concurrently
 	// process dependencies. Default is 1.
 	Concurrency int
@@ -105,7 +110,9 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 
 		for scan.Scan() {
 			if scan.Type() == BracketIncludeType {
-				continue
+				if lib, ok := st.Libraries[scan.Text()]; ok {
+					file.Libs = append(file.Libs, lib)
+				}
 			}
 
 			for _, dir := range searchPath {
@@ -157,6 +164,7 @@ type File struct {
 	Deps       []*File
 	Type       int
 	SourcePair *File
+	Libs       []string
 
 	// stMu used to ensure that only one goroutine is traversing the dependency
 	// tree at any one time.

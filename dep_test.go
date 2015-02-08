@@ -1,6 +1,9 @@
 package cppdep
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestDepSimple(t *testing.T) {
 	var st SourceTree
@@ -24,6 +27,17 @@ func TestDepSimple(t *testing.T) {
 		t.Errorf("Expected a.h to be header type")
 	case mainFile.Deps[0].SourcePair != aFile:
 		t.Errorf("source pair not found for a.h")
+	}
+}
+
+func TestDepSystemLibrary(t *testing.T) {
+	st := &SourceTree{
+		Libraries: map[string]string{"zlib.h": "-lz"},
+	}
+	st.ProcessDirectory("test_files/gzcat")
+	mainFile := st.FindSource("gzcat.cc")
+	if !reflect.DeepEqual(mainFile.Libs, []string{"-lz"}) {
+		t.Errorf("Expected gzcat Libs to be -lz, actually: %v", mainFile.Libs)
 	}
 }
 
