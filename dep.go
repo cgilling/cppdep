@@ -32,7 +32,7 @@ type SourceTree struct {
 
 func (st *SourceTree) ProcessDirectory(rootDir string) error {
 	if st.HeaderExts == nil {
-		st.HeaderExts = []string{".h"}
+		st.HeaderExts = []string{".h", ".hpp", ".hh", ".hxx"}
 	}
 	if st.SourceExts == nil {
 		st.SourceExts = []string{".cc", ".c"}
