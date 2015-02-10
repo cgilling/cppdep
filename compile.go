@@ -8,10 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
 	ErrCompilerError = errors.New("compiler returned an error")
+
+	errNoCompileNeeded = errors.New("Compile skipped because of no modifications")
 )
 
 type Compiler struct {
@@ -26,6 +29,7 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 	var compileErr error
 	var objList []string
 	var libList []string
+	var objWasBuilt bool
 
 	concurrency := c.Concurrency
 	if concurrency == 0 {
@@ -53,16 +57,23 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 
 			if dep.Type == SourceType {
 				path, err = c.makeObject(dep)
+			} else {
+				err = errNoCompileNeeded
 			}
 
 			if err != nil {
-				mu.Lock()
-				compileErr = err
-				mu.Unlock()
-				break
+				if err != errNoCompileNeeded {
+					mu.Lock()
+					compileErr = err
+					mu.Unlock()
+					break
+				}
 			}
 
 			mu.Lock()
+			if err == nil {
+				objWasBuilt = true
+			}
 			if dep.Libs != nil {
 				libList = append(libList, dep.Libs...)
 			}
@@ -87,6 +98,10 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 		return "", compileErr
 	}
 
+	if !objWasBuilt {
+		return c.binPath(file), nil
+	}
+
 	return c.makeBinary(file, objList, libList)
 }
 
@@ -100,10 +115,41 @@ func (c *Compiler) includeDirective() []string {
 
 var supressLogging bool
 
+// These are intended for testing only
+var (
+	makeObjectHook func(file *File)
+	makeBinaryHook func(file *File)
+)
+
 func (c *Compiler) makeObject(file *File) (path string, err error) {
 	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")
 	objectPath := filepath.Join(c.OutputDir, base[:dotIndex]+".o")
+
+	needsCompile := false
+	var modTime time.Time
+	info, err := os.Stat(objectPath)
+	if err == nil {
+		modTime = info.ModTime()
+	} else {
+		needsCompile = true
+	}
+
+	deps := append(file.DepList(), file)
+	for _, dep := range deps {
+		if dep.Type != HeaderType && dep != file {
+			continue
+		}
+		if dep.ModTime.After(modTime) {
+			needsCompile = true
+			break
+		}
+	}
+
+	if !needsCompile {
+		return objectPath, errNoCompileNeeded
+	}
+
 	cmd := exec.Command("g++", "-Wall", "-Wno-sign-compare", "-Wno-deprecated", "-Wno-write-strings", "-o", objectPath)
 	cmd.Args = append(cmd.Args, c.includeDirective()...)
 	cmd.Args = append(cmd.Args, "-c")
@@ -113,19 +159,29 @@ func (c *Compiler) makeObject(file *File) (path string, err error) {
 	if !supressLogging {
 		fmt.Printf("Compiling: %s\n", filepath.Base(objectPath))
 	}
+	if makeObjectHook != nil {
+		makeObjectHook(file)
+	}
 	err = cmd.Run()
 	return objectPath, err
 }
 
-func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path string, err error) {
+func (c *Compiler) binPath(file *File) string {
 	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")
-	binaryPath := filepath.Join(c.OutputDir, base[:dotIndex])
+	return filepath.Join(c.OutputDir, base[:dotIndex])
+}
+
+func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path string, err error) {
+	binaryPath := c.binPath(file)
 	cmd := exec.Command("g++", "-o", binaryPath)
 	cmd.Args = append(cmd.Args, libList...)
 	cmd.Args = append(cmd.Args, objectPaths...)
 	if !supressLogging {
 		fmt.Printf("Compiling: %s\n", filepath.Base(binaryPath))
+	}
+	if makeBinaryHook != nil {
+		makeBinaryHook(file)
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

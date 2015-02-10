@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -74,9 +75,10 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 		}
 
 		file := &File{
-			Path: path,
-			Type: HeaderType,
-			stMu: &st.mu,
+			Path:    path,
+			Type:    HeaderType,
+			ModTime: info.ModTime(),
+			stMu:    &st.mu,
 		}
 		seen[path] = file
 		for _, sourceExt := range st.SourceExts {
@@ -176,6 +178,7 @@ type File struct {
 	Type       int
 	SourcePair *File
 	Libs       []string
+	ModTime    time.Time
 
 	// stMu used to ensure that only one goroutine is traversing the dependency
 	// tree at any one time.
