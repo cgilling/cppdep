@@ -14,6 +14,7 @@ import (
 type Config struct {
 	Includes  []string
 	Libraries map[string][]string
+	Flags     []string
 	BuildDir  string
 }
 
@@ -75,6 +76,7 @@ func main() {
 			c := &cppdep.Compiler{
 				OutputDir:   config.BuildDir,
 				IncludeDirs: config.Includes,
+				Flags:       config.Flags,
 				Concurrency: *concurrency,
 			}
 			binaryPath, err := c.Compile(mainFile)

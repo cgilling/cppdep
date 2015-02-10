@@ -150,3 +150,27 @@ func TestSystemLibraryCompile(t *testing.T) {
 		t.Errorf("Program output not as expect")
 	}
 }
+
+func TestCompileFlags(t *testing.T) {
+	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
+	if err != nil {
+		t.Fatalf("Failed to setup output dir")
+	}
+	defer os.RemoveAll(outputDir)
+
+	var st SourceTree
+	st.ProcessDirectory("test_files/compiler_warning")
+
+	mainFile := st.FindSource("main.cc")
+
+	c := &Compiler{
+		Flags:     []string{"-Wsign-compare", "-Werror"},
+		OutputDir: outputDir,
+	}
+
+	_, err = c.Compile(mainFile)
+
+	if err == nil {
+		t.Errorf("Expected compile to fail due to warning and -Werror flag")
+	}
+}

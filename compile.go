@@ -19,6 +19,7 @@ var (
 
 type Compiler struct {
 	IncludeDirs []string
+	Flags       []string // compile flags passed to the compiler
 	OutputDir   string
 
 	Concurrency int
@@ -150,13 +151,14 @@ func (c *Compiler) makeObject(file *File) (path string, err error) {
 		return objectPath, errNoCompileNeeded
 	}
 
-	cmd := exec.Command("g++", "-Wall", "-Wno-sign-compare", "-Wno-deprecated", "-Wno-write-strings", "-o", objectPath)
+	cmd := exec.Command("g++", "-o", objectPath)
+	cmd.Args = append(cmd.Args, c.Flags...)
 	cmd.Args = append(cmd.Args, c.includeDirective()...)
 	cmd.Args = append(cmd.Args, "-c")
 	cmd.Args = append(cmd.Args, file.Path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 	if !supressLogging {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 		fmt.Printf("Compiling: %s\n", filepath.Base(objectPath))
 	}
 	if makeObjectHook != nil {
@@ -175,16 +177,17 @@ func (c *Compiler) binPath(file *File) string {
 func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path string, err error) {
 	binaryPath := c.binPath(file)
 	cmd := exec.Command("g++", "-o", binaryPath)
+	cmd.Args = append(cmd.Args, c.Flags...)
 	cmd.Args = append(cmd.Args, libList...)
 	cmd.Args = append(cmd.Args, objectPaths...)
 	if !supressLogging {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 		fmt.Printf("Compiling: %s\n", filepath.Base(binaryPath))
 	}
 	if makeBinaryHook != nil {
 		makeBinaryHook(file)
 	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	return binaryPath, err
 }
