@@ -19,8 +19,10 @@ type SourceTree struct {
 
 	// Libraries is a map that defines library header includes to the linker statement needed.
 	// For example if #include <zlib.h> were in a file, this would be the approriate value to
-	// be in the dictionary {"zlib.h": "-lz"}
-	Libraries map[string]string
+	// be in the dictionary {"zlib.h": []string{"-lz"]}}. The value is a slice of strings so that
+	// mutliple statements can be provided, the main purpose being if a library search path needs
+	// to be added, which would look something like this: {"libpq-fe.h": ["-L/usr/pgsql-9.2/lib", "-lpq"]}
+	Libraries map[string][]string
 
 	// Concurrency defines the number of goroutines used to concurrently
 	// process dependencies. Default is 1.
@@ -110,8 +112,8 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 
 		for scan.Scan() {
 			if scan.Type() == BracketIncludeType {
-				if lib, ok := st.Libraries[scan.Text()]; ok {
-					file.Libs = append(file.Libs, lib)
+				if libs, ok := st.Libraries[scan.Text()]; ok {
+					file.Libs = append(file.Libs, libs...)
 				}
 			}
 

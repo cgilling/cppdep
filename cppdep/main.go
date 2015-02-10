@@ -13,7 +13,7 @@ import (
 
 type Config struct {
 	Includes  []string
-	Libraries map[string]string
+	Libraries map[string][]string
 	BuildDir  string
 }
 

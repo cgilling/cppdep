@@ -32,7 +32,7 @@ func TestDepSimple(t *testing.T) {
 
 func TestDepSystemLibrary(t *testing.T) {
 	st := &SourceTree{
-		Libraries: map[string]string{"zlib.h": "-lz"},
+		Libraries: map[string][]string{"zlib.h": {"-lz"}},
 	}
 	st.ProcessDirectory("test_files/gzcat")
 	mainFile := st.FindSource("gzcat.cc")
