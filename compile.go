@@ -43,6 +43,14 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 		for dep := range depCh {
 			var path string
 			var err error
+
+			mu.Lock()
+			cerr := compileErr
+			mu.Unlock()
+			if cerr != nil {
+				continue
+			}
+
 			if dep.Type == SourceType {
 				path, err = c.makeObject(dep)
 			}
