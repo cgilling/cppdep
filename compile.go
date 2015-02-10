@@ -39,8 +39,8 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 	depCh := make(chan *File)
 
 	compileDepLoop := func() {
+		defer wg.Done()
 		for dep := range depCh {
-			defer wg.Done()
 			var path string
 			var err error
 			if dep.Type == SourceType {
@@ -66,11 +66,11 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 	}
 
 	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
 		go compileDepLoop()
 	}
 
 	for _, dep := range deps {
-		wg.Add(1)
 		depCh <- dep
 	}
 	close(depCh)
