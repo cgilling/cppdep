@@ -9,6 +9,10 @@ import (
 	"testing"
 )
 
+func init() {
+	supressLogging = true
+}
+
 func TestSimpleCompile(t *testing.T) {
 	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
 	if err != nil {

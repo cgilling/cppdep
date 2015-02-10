@@ -90,6 +90,8 @@ func (c *Compiler) includeDirective() []string {
 	return ids
 }
 
+var supressLogging bool
+
 func (c *Compiler) makeObject(file *File) (path string, err error) {
 	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")
@@ -100,7 +102,9 @@ func (c *Compiler) makeObject(file *File) (path string, err error) {
 	cmd.Args = append(cmd.Args, file.Path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	fmt.Printf("Compiling: %s\n", filepath.Base(objectPath))
+	if !supressLogging {
+		fmt.Printf("Compiling: %s\n", filepath.Base(objectPath))
+	}
 	err = cmd.Run()
 	return objectPath, err
 }
@@ -112,7 +116,9 @@ func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path s
 	cmd := exec.Command("g++", "-o", binaryPath)
 	cmd.Args = append(cmd.Args, libList...)
 	cmd.Args = append(cmd.Args, objectPaths...)
-	fmt.Printf("Compiling: %s\n", filepath.Base(binaryPath))
+	if !supressLogging {
+		fmt.Printf("Compiling: %s\n", filepath.Base(binaryPath))
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
