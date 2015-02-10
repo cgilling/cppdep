@@ -37,9 +37,9 @@ func main() {
 	rootCmd := cli.App("cppdep", "dependency graph and easy compiles")
 	configPath := rootCmd.StringOpt("config", "", "path to yaml config")
 	rootCmd.Command("build", "build binaries from a given directory", func(cmd *cli.Cmd) {
-		cmd.Spec = "SRCDIR BINARY_NAME"
 		srcDir := cmd.StringArg("SRCDIR", "./", "")
 		binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc")
+		concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
 
 		cmd.Action = func() {
 			fmt.Printf("config: %q, srcDir: %q\n", *configPath, *srcDir)
@@ -60,7 +60,7 @@ func main() {
 			st := &cppdep.SourceTree{
 				IncludeDirs: config.Includes,
 				Libraries:   config.Libraries,
-				Concurrency: 4,
+				Concurrency: *concurrency,
 			}
 			if err := st.ProcessDirectory(*srcDir); err != nil {
 				log.Fatalf("Failed to process source directory: %s (%v)", *srcDir, err)
@@ -73,6 +73,7 @@ func main() {
 			c := &cppdep.Compiler{
 				OutputDir:   config.BuildDir,
 				IncludeDirs: config.Includes,
+				Concurrency: *concurrency,
 			}
 			binaryPath, err := c.Compile(mainFile)
 			if err != nil {

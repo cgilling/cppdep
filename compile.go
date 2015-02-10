@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 var (
@@ -16,31 +17,68 @@ var (
 type Compiler struct {
 	IncludeDirs []string
 	OutputDir   string
+
+	Concurrency int
 }
 
 func (c *Compiler) Compile(file *File) (path string, err error) {
+	var mu sync.Mutex
+	var compileErr error
+	var objList []string
+	var libList []string
+
+	concurrency := c.Concurrency
+	if concurrency == 0 {
+		concurrency = 1
+	}
+
 	deps := file.DepListFollowSource()
 	deps = append(deps, file)
 
-	var objList []string
-	var libList []string
-	for _, dep := range deps {
-		var path string
-		var err error
-		if dep.Type == SourceType {
-			path, err = c.makeObject(dep)
-		}
-		if err != nil {
-			return "", err
-		}
+	var wg sync.WaitGroup
+	depCh := make(chan *File)
 
-		if dep.Libs != nil {
-			libList = append(libList, dep.Libs...)
-		}
-		if path != "" {
-			objList = append(objList, path)
+	compileDepLoop := func() {
+		for dep := range depCh {
+			defer wg.Done()
+			var path string
+			var err error
+			if dep.Type == SourceType {
+				path, err = c.makeObject(dep)
+			}
+
+			if err != nil {
+				mu.Lock()
+				compileErr = err
+				mu.Unlock()
+				break
+			}
+
+			mu.Lock()
+			if dep.Libs != nil {
+				libList = append(libList, dep.Libs...)
+			}
+			if path != "" {
+				objList = append(objList, path)
+			}
+			mu.Unlock()
 		}
 	}
+
+	for i := 0; i < concurrency; i++ {
+		go compileDepLoop()
+	}
+
+	for _, dep := range deps {
+		wg.Add(1)
+		depCh <- dep
+	}
+	close(depCh)
+	wg.Wait()
+	if compileErr != nil {
+		return "", compileErr
+	}
+
 	return c.makeBinary(file, objList, libList)
 }
 
