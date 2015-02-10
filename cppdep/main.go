@@ -70,7 +70,10 @@ func main() {
 				log.Fatalf("Unable to find source for %q", *binaryName)
 			}
 
-			c := &cppdep.Compiler{OutputDir: config.BuildDir}
+			c := &cppdep.Compiler{
+				OutputDir:   config.BuildDir,
+				IncludeDirs: config.Includes,
+			}
 			binaryPath, err := c.Compile(mainFile)
 			if err != nil {
 				log.Fatalf("Failed to compile main file at %s (%v)", mainFile.Path, err)

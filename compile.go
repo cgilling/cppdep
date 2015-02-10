@@ -2,6 +2,7 @@ package cppdep
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,11 +14,12 @@ var (
 )
 
 type Compiler struct {
-	OutputDir string
+	IncludeDirs []string
+	OutputDir   string
 }
 
 func (c *Compiler) Compile(file *File) (path string, err error) {
-	deps := file.DepList()
+	deps := file.DepListFollowSource()
 	deps = append(deps, file)
 
 	var objList []string
@@ -25,32 +27,42 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 	for _, dep := range deps {
 		var path string
 		var err error
-		if dep.Libs != nil {
-			libList = append(libList, dep.Libs...)
-		}
-		if dep.SourcePair != nil && dep.SourcePair.Libs != nil {
-			libList = append(libList, dep.SourcePair.Libs...)
-		}
 		if dep.Type == SourceType {
 			path, err = c.makeObject(dep)
-		} else if dep.Type == HeaderType && dep.SourcePair != nil {
-			path, err = c.makeObject(dep.SourcePair)
 		}
 		if err != nil {
 			return "", err
 		}
-		objList = append(objList, path)
+
+		if dep.Libs != nil {
+			libList = append(libList, dep.Libs...)
+		}
+		if path != "" {
+			objList = append(objList, path)
+		}
 	}
 	return c.makeBinary(file, objList, libList)
+}
+
+func (c *Compiler) includeDirective() []string {
+	var ids []string
+	for _, dir := range c.IncludeDirs {
+		ids = append(ids, "-I"+dir)
+	}
+	return ids
 }
 
 func (c *Compiler) makeObject(file *File) (path string, err error) {
 	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")
 	objectPath := filepath.Join(c.OutputDir, base[:dotIndex]+".o")
-	cmd := exec.Command("g++", "-o", objectPath, "-c", file.Path)
+	cmd := exec.Command("g++", "-Wall", "-Wno-sign-compare", "-Wno-deprecated", "-Wno-write-strings", "-o", objectPath)
+	cmd.Args = append(cmd.Args, c.includeDirective()...)
+	cmd.Args = append(cmd.Args, "-c")
+	cmd.Args = append(cmd.Args, file.Path)
 	cmd.Stdout = os.Stdout
-	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	fmt.Printf("Compiling: %s\n", filepath.Base(objectPath))
 	err = cmd.Run()
 	return objectPath, err
 }
@@ -62,8 +74,9 @@ func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path s
 	cmd := exec.Command("g++", "-o", binaryPath)
 	cmd.Args = append(cmd.Args, libList...)
 	cmd.Args = append(cmd.Args, objectPaths...)
+	fmt.Printf("Compiling: %s\n", filepath.Base(binaryPath))
 	cmd.Stdout = os.Stdout
-	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	return binaryPath, err
 }

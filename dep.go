@@ -178,12 +178,25 @@ func (f *File) DepList() []*File {
 		f.stMu.Lock()
 		defer f.stMu.Unlock()
 	}
-	dl := f.generateDepList()
-	f.unvisitDeps()
+	dl := f.generateDepList(false)
+	f.unvisitDeps(false)
 	return dl
 }
 
-func (f *File) generateDepList() []*File {
+// DepList will return the list of paths for all dependencies of f. It will follow
+// the SourcePair of header files as well. Then intended use being that one could
+// find all the files needed to compile a main .cc file.
+func (f *File) DepListFollowSource() []*File {
+	if f.stMu != nil {
+		f.stMu.Lock()
+		defer f.stMu.Unlock()
+	}
+	dl := f.generateDepList(true)
+	f.unvisitDeps(true)
+	return dl
+}
+
+func (f *File) generateDepList(followSource bool) []*File {
 	f.visited = true
 	var dl []*File
 
@@ -192,17 +205,24 @@ func (f *File) generateDepList() []*File {
 			continue
 		}
 		dl = append(dl, dep)
-		dl = append(dl, dep.generateDepList()...)
+		dl = append(dl, dep.generateDepList(followSource)...)
+	}
+	if followSource && f.SourcePair != nil && !f.SourcePair.visited {
+		dl = append(dl, f.SourcePair)
+		dl = append(dl, f.SourcePair.generateDepList(followSource)...)
 	}
 	return dl
 }
 
-func (f *File) unvisitDeps() {
+func (f *File) unvisitDeps(followSource bool) {
 	if !f.visited {
 		return
 	}
 	f.visited = false
 	for _, dep := range f.Deps {
-		dep.unvisitDeps()
+		dep.unvisitDeps(followSource)
+	}
+	if followSource && f.SourcePair != nil {
+		f.SourcePair.unvisitDeps(followSource)
 	}
 }
