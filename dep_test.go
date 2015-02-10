@@ -41,6 +41,15 @@ func TestDepSystemLibrary(t *testing.T) {
 	}
 }
 
+func TestUsingFastScanningOption(t *testing.T) {
+	st := &SourceTree{UseFastScanning: true}
+	st.ProcessDirectory("test_files/fast_scan_fail")
+	mainFile := st.FindSource("main.cc")
+	if len(mainFile.Deps) != 0 {
+		t.Errorf("Picked up an deps that weren't expected: %v", mainFile.Deps)
+	}
+}
+
 func TestFileDepList(t *testing.T) {
 	a := &File{Path: "a.h"}
 	b := &File{Path: "b.h", Deps: []*File{a}}

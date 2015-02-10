@@ -40,6 +40,7 @@ func main() {
 		srcDir := cmd.StringArg("SRCDIR", "./", "")
 		binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc")
 		concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
+		fast := cmd.BoolOpt("fast", false, "Set to enable fast file scanning")
 
 		cmd.Action = func() {
 			fmt.Printf("config: %q, srcDir: %q\n", *configPath, *srcDir)
@@ -58,9 +59,10 @@ func main() {
 			}
 
 			st := &cppdep.SourceTree{
-				IncludeDirs: config.Includes,
-				Libraries:   config.Libraries,
-				Concurrency: *concurrency,
+				IncludeDirs:     config.Includes,
+				Libraries:       config.Libraries,
+				Concurrency:     *concurrency,
+				UseFastScanning: *fast,
 			}
 			if err := st.ProcessDirectory(*srcDir); err != nil {
 				log.Fatalf("Failed to process source directory: %s (%v)", *srcDir, err)

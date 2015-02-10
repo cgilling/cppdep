@@ -28,6 +28,10 @@ type SourceTree struct {
 	// process dependencies. Default is 1.
 	Concurrency int
 
+	// UseFastScanning will use the NewFastScanner function for scanning documents rather
+	// than the standard one. See the documention for Scanner for more information.
+	UseFastScanning bool
+
 	mu      sync.Mutex
 	sources []*File
 }
@@ -95,7 +99,12 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 		if err != nil {
 			return err
 		}
-		scan := NewScanner(fp)
+		var scan *Scanner
+		if st.UseFastScanning {
+			scan = NewFastScanner(fp)
+		} else {
+			scan = NewScanner(fp)
+		}
 
 		if file.Type == HeaderType {
 			dotIndex := strings.LastIndex(file.Path, ".")
