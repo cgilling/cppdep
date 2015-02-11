@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/cgilling/cppdep"
 	cli "github.com/jawher/mow.cli"
@@ -12,17 +13,24 @@ import (
 )
 
 type Config struct {
-	Includes   []string
-	Libraries  map[string][]string
-	Flags      []string
-	BuildDir   string
-	Generators []GeneratorConfig
+	Includes        []string
+	Libraries       map[string][]string
+	Flags           []string
+	BuildDir        string
+	TypeGenerators  []TypeGeneratorConfig
+	ShellGenerators []ShellGeneratorConfig
 }
 
-type GeneratorConfig struct {
+type TypeGeneratorConfig struct {
 	InputExt   string
 	OutputExts []string
 	Command    []string
+}
+
+type ShellGeneratorConfig struct {
+	InputPaths  []string
+	OutputFiles []string
+	Path        string
 }
 
 func (c *Config) ReadFile(path string) error {
@@ -66,12 +74,23 @@ func main() {
 				log.Fatalf("Failed to create build dir: %s (%v)", config.BuildDir, err)
 			}
 
-			var gens []*cppdep.TypeGenerator
-			for _, gen := range config.Generators {
+			var gens []cppdep.Generator
+			for _, gen := range config.TypeGenerators {
 				gens = append(gens, &cppdep.TypeGenerator{
 					InputExt:   gen.InputExt,
 					OutputExts: gen.OutputExts,
 					Command:    gen.Command,
+				})
+			}
+			for _, gen := range config.ShellGenerators {
+				absPath, err := filepath.Abs(gen.Path)
+				if err != nil {
+					log.Fatalf("Failed to get absolute path of provided shell file: %q", gen.Path)
+				}
+				gens = append(gens, &cppdep.ShellGenerator{
+					InputPaths:    gen.InputPaths,
+					OutputFiles:   gen.OutputFiles,
+					ShellFilePath: absPath,
 				})
 			}
 

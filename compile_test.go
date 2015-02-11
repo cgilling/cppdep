@@ -175,7 +175,7 @@ func TestCompileFlags(t *testing.T) {
 	}
 }
 
-func TestCompileUsingGenerators(t *testing.T) {
+func TestCompileUsingTypeGenerator(t *testing.T) {
 	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
 	if err != nil {
 		t.Fatalf("Failed to setup output dir")
@@ -212,6 +212,44 @@ func TestCompileUsingGenerators(t *testing.T) {
 	}
 
 	// TODO: test that one input being modified only triggers a single generator
+}
+
+func TestCompileUsingShellGenerator(t *testing.T) {
+	outputDir, err := ioutil.TempDir("", "cppdep_generator_test")
+	if err != nil {
+		t.Fatalf("Failed to setup output dir")
+	}
+	defer os.RemoveAll(outputDir)
+
+	absShellPath, err := filepath.Abs("test_files/shell_generator/script.sh")
+	if err != nil {
+		t.Fatalf("Failed to get absolute path of shell script")
+	}
+
+	g := &ShellGenerator{
+		InputPaths:    []string{"dir/firstHalf.txt", "dir/secondHalf.cc", "lib.h", "lib.cc"},
+		OutputFiles:   []string{"main.cc", "modlib.h", "modlib.cc"},
+		ShellFilePath: absShellPath,
+	}
+
+	st := &SourceTree{
+		Generators: []Generator{g},
+		BuildDir:   outputDir,
+	}
+	st.ProcessDirectory("test_files/shell_generator")
+	mainFile := st.FindSource("main.cc")
+	if mainFile == nil {
+		t.Fatalf("Unable to find main file")
+	}
+
+	c := &Compiler{
+		IncludeDirs: []string{st.GenDir()},
+		OutputDir:   outputDir,
+	}
+	_, err = c.Compile(mainFile)
+	if err != nil {
+		t.Errorf("Failed to compile: %v", err)
+	}
 }
 
 // TODO: won't try and recompile binary if .o files haven't changed but build
