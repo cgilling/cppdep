@@ -1,6 +1,8 @@
 package cppdep
 
 import (
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -48,6 +50,50 @@ func TestUsingFastScanningOption(t *testing.T) {
 	if len(mainFile.Deps) != 0 {
 		t.Errorf("Picked up an deps that weren't expected: %v", mainFile.Deps)
 	}
+}
+
+func TestUsingGenerator(t *testing.T) {
+	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
+	if err != nil {
+		t.Fatalf("Failed to setup output dir")
+	}
+	defer os.RemoveAll(outputDir)
+
+	cg := &Generator{
+		InputExt:   ".txtc",
+		OutputExts: []string{".cc"},
+		Command:    []string{"cp", "$CPPDEP_INPUT", "$CPPDEP_OUTPUT_PREFIX.cc"},
+	}
+	hg := &Generator{
+		InputExt:   ".txth",
+		OutputExts: []string{".h"},
+		Command:    []string{"cp", "$CPPDEP_INPUT", "$CPPDEP_OUTPUT_PREFIX.h"},
+	}
+	st := &SourceTree{
+		Generators: []*Generator{cg, hg},
+		BuildDir:   outputDir,
+	}
+	st.ProcessDirectory("test_files/generator_compile")
+	mainFile := st.FindSource("main.cc")
+	if mainFile == nil {
+		t.Errorf("Unable to find main file")
+	}
+
+	genCount := 0
+	genHook = func(input string) {
+		genCount++
+	}
+	st2 := &SourceTree{
+		Generators: []*Generator{cg, hg},
+		BuildDir:   outputDir,
+	}
+	st2.ProcessDirectory("test_files/generator_compile")
+
+	if genCount != 0 {
+		t.Errorf("Expected no files to be generated because nothing was modified")
+	}
+
+	// TODO: test that one input being modified only triggers a single generator
 }
 
 func TestFileDepList(t *testing.T) {

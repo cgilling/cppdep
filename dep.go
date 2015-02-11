@@ -1,6 +1,7 @@
 package cppdep
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 const (
 	HeaderType = iota + 1
 	SourceType
+	GenDepType
 )
 
 type SourceTree struct {
@@ -25,6 +27,12 @@ type SourceTree struct {
 	// to be added, which would look something like this: {"libpq-fe.h": ["-L/usr/pgsql-9.2/lib", "-lpq"]}
 	Libraries map[string][]string
 
+	Generators []*Generator
+
+	// BuildDir is the directory where build files will be places. This is used
+	// for a place to put output from the Generators.
+	BuildDir string
+
 	// Concurrency defines the number of goroutines used to concurrently
 	// process dependencies. Default is 1.
 	Concurrency int
@@ -37,6 +45,10 @@ type SourceTree struct {
 	sources []*File
 }
 
+func (st *SourceTree) GenDir() string {
+	return filepath.Join(st.BuildDir, "gen")
+}
+
 func (st *SourceTree) ProcessDirectory(rootDir string) error {
 	if st.HeaderExts == nil {
 		st.HeaderExts = []string{".h", ".hpp", ".hh", ".hxx"}
@@ -47,7 +59,13 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 	if st.Concurrency == 0 {
 		st.Concurrency = 1
 	}
+	if len(st.Generators) > 0 && st.BuildDir == "" {
+		return fmt.Errorf("Build dir must be set if Generators are used")
+	}
 
+	// First collect all the files
+
+	var genFiles []*genFile
 	seen := make(map[string]*File)
 	allExtsMap := make(map[string]struct{})
 	for _, ext := range st.HeaderExts {
@@ -55,6 +73,9 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 	}
 	for _, ext := range st.SourceExts {
 		allExtsMap[ext] = struct{}{}
+	}
+	for _, gen := range st.Generators {
+		allExtsMap[gen.InputExt] = struct{}{}
 	}
 
 	walkFunc := func(path string, info os.FileInfo, err error) error {
@@ -72,6 +93,18 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 
 		if _, ok := seen[path]; ok {
 			return nil
+		}
+
+		for _, gen := range st.Generators {
+			if ext == gen.InputExt {
+				gf := &genFile{
+					path:    path,
+					modTime: info.ModTime(),
+					gen:     gen,
+				}
+				genFiles = append(genFiles, gf)
+				return nil
+			}
 		}
 
 		file := &File{
@@ -92,6 +125,41 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 	}
 
 	filepath.Walk(rootDir, walkFunc)
+
+	// We need to run the generator here and add the output files to seen so they
+	// can be picked up in the dependency graph
+
+	genDir := st.GenDir()
+	if err := os.MkdirAll(genDir, 0755); err != nil {
+		return err
+	}
+	for _, genFile := range genFiles {
+		base := filepath.Base(genFile.path)
+		dotIndex := strings.LastIndex(base, ".")
+		outputPrefex := filepath.Join(genDir, base[:dotIndex])
+		outModTime := time.Now()
+		for _, outExt := range genFile.gen.OutputExts {
+			info, err := os.Stat(fmt.Sprintf("%s%s", outputPrefex, outExt))
+			if err != nil {
+				outModTime = time.Time{}
+			} else if info.ModTime().Before(outModTime) {
+				outModTime = info.ModTime()
+			}
+		}
+		if outModTime.Before(genFile.modTime) {
+			genFile.gen.Generate(genFile.path, genDir)
+		}
+		for _, outExt := range genFile.gen.OutputExts {
+			path := fmt.Sprintf("%s%s", outputPrefex, outExt)
+			info, err := os.Stat(path)
+			if err != nil {
+				return err
+			}
+			walkFunc(path, info, nil)
+		}
+	}
+
+	// Now scan all the files looking for includes and creating a dependency graph
 
 	searchPath := []string{"placeholder"}
 	searchPath = append(searchPath, st.IncludeDirs...)
@@ -184,6 +252,12 @@ type File struct {
 	// tree at any one time.
 	stMu    *sync.Mutex
 	visited bool
+}
+
+type genFile struct {
+	path    string
+	modTime time.Time
+	gen     *Generator
 }
 
 // DepList will return the list of paths for all dependencies of f.

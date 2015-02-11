@@ -12,10 +12,17 @@ import (
 )
 
 type Config struct {
-	Includes  []string
-	Libraries map[string][]string
-	Flags     []string
-	BuildDir  string
+	Includes   []string
+	Libraries  map[string][]string
+	Flags      []string
+	BuildDir   string
+	Generators []GeneratorConfig
+}
+
+type GeneratorConfig struct {
+	InputExt   string
+	OutputExts []string
+	Command    []string
 }
 
 func (c *Config) ReadFile(path string) error {
@@ -59,11 +66,22 @@ func main() {
 				log.Fatalf("Failed to create build dir: %s (%v)", config.BuildDir, err)
 			}
 
+			var gens []*cppdep.Generator
+			for _, gen := range config.Generators {
+				gens = append(gens, &cppdep.Generator{
+					InputExt:   gen.InputExt,
+					OutputExts: gen.OutputExts,
+					Command:    gen.Command,
+				})
+			}
+
 			st := &cppdep.SourceTree{
 				IncludeDirs:     config.Includes,
 				Libraries:       config.Libraries,
 				Concurrency:     *concurrency,
 				UseFastScanning: *fast,
+				Generators:      gens,
+				BuildDir:        config.BuildDir,
 			}
 			if err := st.ProcessDirectory(*srcDir); err != nil {
 				log.Fatalf("Failed to process source directory: %s (%v)", *srcDir, err)
@@ -75,7 +93,7 @@ func main() {
 
 			c := &cppdep.Compiler{
 				OutputDir:   config.BuildDir,
-				IncludeDirs: config.Includes,
+				IncludeDirs: append(config.Includes, st.GenDir()),
 				Flags:       config.Flags,
 				Concurrency: *concurrency,
 			}
