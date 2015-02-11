@@ -161,7 +161,7 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 
 	// Now scan all the files looking for includes and creating a dependency graph
 
-	searchPath := []string{"placeholder"}
+	searchPath := []string{"placeholder", genDir}
 	searchPath = append(searchPath, st.IncludeDirs...)
 
 	processFile := func(file *File) error {

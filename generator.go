@@ -40,9 +40,16 @@ func (g *Generator) Generate(inputFile, outputDir string) error {
 		transformedArgs = append(transformedArgs, arg)
 	}
 
+	if !supressLogging {
+		var outputFiles []string
+		for _, outExt := range g.OutputExts {
+			outputFiles = append(outputFiles, fmt.Sprintf("%s%s", base[:dotIndex], outExt))
+		}
+		fmt.Printf("Generating: %s\n", strings.Join(outputFiles, ", "))
+	}
+
 	cmd := exec.Command(g.Command[0])
 	cmd.Args = append(cmd.Args, transformedArgs...)
-	fmt.Printf("Running Generate Command: %v\n", cmd.Args)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

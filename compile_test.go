@@ -174,3 +174,45 @@ func TestCompileFlags(t *testing.T) {
 		t.Errorf("Expected compile to fail due to warning and -Werror flag")
 	}
 }
+
+func TestCompileUsingGenerators(t *testing.T) {
+	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
+	if err != nil {
+		t.Fatalf("Failed to setup output dir")
+	}
+	defer os.RemoveAll(outputDir)
+
+	cg := &Generator{
+		InputExt:   ".txtc",
+		OutputExts: []string{".cc"},
+		Command:    []string{"cp", "$CPPDEP_INPUT_FILE", "$CPPDEP_OUTPUT_PREFIX.cc"},
+	}
+	hg := &Generator{
+		InputExt:   ".txth",
+		OutputExts: []string{".h"},
+		Command:    []string{"cp", "$CPPDEP_INPUT_FILE", "$CPPDEP_OUTPUT_PREFIX.h"},
+	}
+	st := &SourceTree{
+		Generators: []*Generator{cg, hg},
+		BuildDir:   outputDir,
+	}
+	st.ProcessDirectory("test_files/generator_compile")
+	mainFile := st.FindSource("main.cc")
+	if mainFile == nil {
+		t.Fatalf("Unable to find main file")
+	}
+
+	c := &Compiler{
+		IncludeDirs: []string{st.GenDir()},
+		OutputDir:   outputDir,
+	}
+	_, err = c.Compile(mainFile)
+	if err != nil {
+		t.Errorf("Failed to compile: %v", err)
+	}
+
+	// TODO: test that one input being modified only triggers a single generator
+}
+
+// TODO: won't try and recompile binary if .o files haven't changed but build
+// failed for some other reason (missing library or something)
