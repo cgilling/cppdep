@@ -14,7 +14,7 @@ func TestSimpleGenerator(t *testing.T) {
 	}
 	defer os.RemoveAll(outputDir)
 
-	g := &Generator{
+	g := &TypeGenerator{
 		InputExt:   ".txt",
 		OutputExts: []string{".cc"},
 		Command:    []string{"cp", "$CPPDEP_INPUT_FILE", "$CPPDEP_OUTPUT_PREFIX.cc"},

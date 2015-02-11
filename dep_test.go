@@ -52,25 +52,25 @@ func TestUsingFastScanningOption(t *testing.T) {
 	}
 }
 
-func TestUsingGenerator(t *testing.T) {
+func TestUsingTypeGenerator(t *testing.T) {
 	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
 	if err != nil {
 		t.Fatalf("Failed to setup output dir")
 	}
 	defer os.RemoveAll(outputDir)
 
-	cg := &Generator{
+	cg := &TypeGenerator{
 		InputExt:   ".txtc",
 		OutputExts: []string{".cc"},
 		Command:    []string{"cp", "$CPPDEP_INPUT_FILE", "$CPPDEP_OUTPUT_PREFIX.cc"},
 	}
-	hg := &Generator{
+	hg := &TypeGenerator{
 		InputExt:   ".txth",
 		OutputExts: []string{".h"},
 		Command:    []string{"cp", "$CPPDEP_INPUT_FILE", "$CPPDEP_OUTPUT_PREFIX.h"},
 	}
 	st := &SourceTree{
-		Generators: []*Generator{cg, hg},
+		Generators: []Generator{cg, hg},
 		BuildDir:   outputDir,
 	}
 	st.ProcessDirectory("test_files/generator_compile")
@@ -84,7 +84,7 @@ func TestUsingGenerator(t *testing.T) {
 		genCount++
 	}
 	st2 := &SourceTree{
-		Generators: []*Generator{cg, hg},
+		Generators: []Generator{cg, hg},
 		BuildDir:   outputDir,
 	}
 	st2.ProcessDirectory("test_files/generator_compile")

@@ -66,9 +66,9 @@ func main() {
 				log.Fatalf("Failed to create build dir: %s (%v)", config.BuildDir, err)
 			}
 
-			var gens []*cppdep.Generator
+			var gens []*cppdep.TypeGenerator
 			for _, gen := range config.Generators {
-				gens = append(gens, &cppdep.Generator{
+				gens = append(gens, &cppdep.TypeGenerator{
 					InputExt:   gen.InputExt,
 					OutputExts: gen.OutputExts,
 					Command:    gen.Command,

@@ -8,7 +8,13 @@ import (
 	"strings"
 )
 
-type Generator struct {
+type Generator interface {
+	Generate(inputFile, outputDir string) error
+	Match(path string) bool
+	OutputPaths(inputFile, outputDir string) []string
+}
+
+type TypeGenerator struct {
 	InputExt   string
 	OutputExts []string
 	Command    []string
@@ -16,16 +22,34 @@ type Generator struct {
 
 var genHook func(input string)
 
-func (g *Generator) Generate(inputFile, outputDir string) error {
+func (g *TypeGenerator) Match(path string) bool {
+	return strings.HasSuffix(path, g.InputExt)
+}
+
+func outputPrefix(inputFile, outputDir string) string {
 	base := filepath.Base(inputFile)
 	dotIndex := strings.LastIndex(base, ".")
-	outputPrefex := filepath.Join(outputDir, base[:dotIndex])
+	if dotIndex == -1 {
+		return filepath.Join(outputDir, base)
+	}
+	return filepath.Join(outputDir, base[:dotIndex])
+}
 
+func (g *TypeGenerator) OutputPaths(inputFile, outputDir string) []string {
+	prefix := outputPrefix(inputFile, outputDir)
+	var outputPaths []string
+	for _, outExt := range g.OutputExts {
+		outputPaths = append(outputPaths, fmt.Sprintf("%s%s", prefix, outExt))
+	}
+	return outputPaths
+}
+
+func (g *TypeGenerator) Generate(inputFile, outputDir string) error {
 	td := map[string]string{
 		"$CPPDEP_INPUT_DIR":     filepath.Dir(inputFile),
 		"$CPPDEP_INPUT_FILE":    inputFile,
 		"$CPPDEP_OUTPUT_DIR":    outputDir,
-		"$CPPDEP_OUTPUT_PREFIX": outputPrefex,
+		"$CPPDEP_OUTPUT_PREFIX": outputPrefix(inputFile, outputDir),
 	}
 
 	var transformedArgs []string
@@ -41,11 +65,11 @@ func (g *Generator) Generate(inputFile, outputDir string) error {
 	}
 
 	if !supressLogging {
-		var outputFiles []string
-		for _, outExt := range g.OutputExts {
-			outputFiles = append(outputFiles, fmt.Sprintf("%s%s", base[:dotIndex], outExt))
+		fmt.Printf("Generating:")
+		for _, fn := range g.OutputPaths(inputFile, outputDir) {
+			fmt.Printf(" %s", filepath.Base(fn))
 		}
-		fmt.Printf("Generating: %s\n", strings.Join(outputFiles, ", "))
+		fmt.Print("\n")
 	}
 
 	cmd := exec.Command(g.Command[0])

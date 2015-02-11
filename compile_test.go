@@ -182,18 +182,18 @@ func TestCompileUsingGenerators(t *testing.T) {
 	}
 	defer os.RemoveAll(outputDir)
 
-	cg := &Generator{
+	cg := &TypeGenerator{
 		InputExt:   ".txtc",
 		OutputExts: []string{".cc"},
 		Command:    []string{"cp", "$CPPDEP_INPUT_FILE", "$CPPDEP_OUTPUT_PREFIX.cc"},
 	}
-	hg := &Generator{
+	hg := &TypeGenerator{
 		InputExt:   ".txth",
 		OutputExts: []string{".h"},
 		Command:    []string{"cp", "$CPPDEP_INPUT_FILE", "$CPPDEP_OUTPUT_PREFIX.h"},
 	}
 	st := &SourceTree{
-		Generators: []*Generator{cg, hg},
+		Generators: []Generator{cg, hg},
 		BuildDir:   outputDir,
 	}
 	st.ProcessDirectory("test_files/generator_compile")

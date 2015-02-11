@@ -27,7 +27,7 @@ type SourceTree struct {
 	// to be added, which would look something like this: {"libpq-fe.h": ["-L/usr/pgsql-9.2/lib", "-lpq"]}
 	Libraries map[string][]string
 
-	Generators []*Generator
+	Generators []Generator
 
 	// BuildDir is the directory where build files will be places. This is used
 	// for a place to put output from the Generators.
@@ -74,9 +74,6 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 	for _, ext := range st.SourceExts {
 		allExtsMap[ext] = struct{}{}
 	}
-	for _, gen := range st.Generators {
-		allExtsMap[gen.InputExt] = struct{}{}
-	}
 
 	walkFunc := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -86,17 +83,8 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 			return nil
 		}
 
-		ext := filepath.Ext(path)
-		if _, ok := allExtsMap[ext]; !ok {
-			return nil
-		}
-
-		if _, ok := seen[path]; ok {
-			return nil
-		}
-
 		for _, gen := range st.Generators {
-			if ext == gen.InputExt {
+			if gen.Match(path) {
 				gf := &genFile{
 					path:    path,
 					modTime: info.ModTime(),
@@ -105,6 +93,15 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 				genFiles = append(genFiles, gf)
 				return nil
 			}
+		}
+
+		ext := filepath.Ext(path)
+		if _, ok := allExtsMap[ext]; !ok {
+			return nil
+		}
+
+		if _, ok := seen[path]; ok {
+			return nil
 		}
 
 		file := &File{
@@ -129,17 +126,18 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 	// We need to run the generator here and add the output files to seen so they
 	// can be picked up in the dependency graph
 
+	// NOTE: for generators that take more than one file for input, this will do
+	// 		 a bunch of extra os.Stat calls but shouldn't generate multiple times.
+
 	genDir := st.GenDir()
 	if err := os.MkdirAll(genDir, 0755); err != nil {
 		return err
 	}
 	for _, genFile := range genFiles {
-		base := filepath.Base(genFile.path)
-		dotIndex := strings.LastIndex(base, ".")
-		outputPrefex := filepath.Join(genDir, base[:dotIndex])
 		outModTime := time.Now()
-		for _, outExt := range genFile.gen.OutputExts {
-			info, err := os.Stat(fmt.Sprintf("%s%s", outputPrefex, outExt))
+		outputPaths := genFile.gen.OutputPaths(genFile.path, genDir)
+		for _, outPath := range outputPaths {
+			info, err := os.Stat(outPath)
 			if err != nil {
 				outModTime = time.Time{}
 			} else if info.ModTime().Before(outModTime) {
@@ -149,13 +147,12 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 		if outModTime.Before(genFile.modTime) {
 			genFile.gen.Generate(genFile.path, genDir)
 		}
-		for _, outExt := range genFile.gen.OutputExts {
-			path := fmt.Sprintf("%s%s", outputPrefex, outExt)
-			info, err := os.Stat(path)
+		for _, outPath := range outputPaths {
+			info, err := os.Stat(outPath)
 			if err != nil {
 				return err
 			}
-			walkFunc(path, info, nil)
+			walkFunc(outPath, info, nil)
 		}
 	}
 
@@ -257,7 +254,7 @@ type File struct {
 type genFile struct {
 	path    string
 	modTime time.Time
-	gen     *Generator
+	gen     Generator
 }
 
 // DepList will return the list of paths for all dependencies of f.
