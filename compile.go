@@ -178,8 +178,8 @@ func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path s
 	binaryPath := c.binPath(file)
 	cmd := exec.Command("g++", "-o", binaryPath)
 	cmd.Args = append(cmd.Args, c.Flags...)
-	cmd.Args = append(cmd.Args, libList...)
 	cmd.Args = append(cmd.Args, objectPaths...)
+	cmd.Args = append(cmd.Args, libList...)
 	if !supressLogging {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
