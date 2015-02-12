@@ -91,7 +91,6 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 					gen:     gen,
 				}
 				genFiles = append(genFiles, gf)
-				return nil
 			}
 		}
 

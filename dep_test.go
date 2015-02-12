@@ -94,6 +94,9 @@ func TestUsingTypeGenerator(t *testing.T) {
 	}
 
 	// TODO: test that one input being modified only triggers a single generator
+
+	// TODO: test that a file matched by a generator is still available as a file
+	// 			 for other to include
 }
 
 func TestFileDepList(t *testing.T) {
