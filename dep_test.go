@@ -8,8 +8,10 @@ import (
 )
 
 func TestDepSimple(t *testing.T) {
-	var st SourceTree
-	st.ProcessDirectory("test_files/simple")
+	st := SourceTree{
+		SrcRoot: "test_files/simple",
+	}
+	st.ProcessDirectory()
 
 	mainFile := st.FindSource("main.cc")
 	aFile := st.FindSource("a.cc")
@@ -27,16 +29,32 @@ func TestDepSimple(t *testing.T) {
 		t.Errorf("Did not find a.h as dependency for main.cc")
 	case mainFile.Deps[0].Type != HeaderType:
 		t.Errorf("Expected a.h to be header type")
-	case mainFile.Deps[0].SourcePair != aFile:
-		t.Errorf("source pair not found for a.h")
+	case len(mainFile.Deps[0].ImplFiles) != 1 || mainFile.Deps[0].ImplFiles[0] != aFile:
+		t.Errorf("implementation file not found for a.h")
+	}
+}
+
+func TestSourceLib(t *testing.T) {
+	st := &SourceTree{
+		SrcRoot:    "test_files/source_lib",
+		SourceLibs: map[string][]string{"lib.h": {"liba.cc", "libb.cc"}},
+	}
+	st.ProcessDirectory()
+
+	mainFile := st.FindSource("main.cc")
+	hFile := mainFile.DepList()[0]
+	switch {
+	case len(hFile.ImplFiles) != 2:
+		t.Errorf("Expected lib.h to have to implementation files: actually has %d", len(hFile.ImplFiles))
 	}
 }
 
 func TestDepSystemLibrary(t *testing.T) {
 	st := &SourceTree{
+		SrcRoot:   "test_files/gzcat",
 		Libraries: map[string][]string{"zlib.h": {"-lz"}},
 	}
-	st.ProcessDirectory("test_files/gzcat")
+	st.ProcessDirectory()
 	mainFile := st.FindSource("gzcat.cc")
 	if !reflect.DeepEqual(mainFile.Libs, []string{"-lz"}) {
 		t.Errorf("Expected gzcat Libs to be -lz, actually: %v", mainFile.Libs)
@@ -44,8 +62,11 @@ func TestDepSystemLibrary(t *testing.T) {
 }
 
 func TestUsingFastScanningOption(t *testing.T) {
-	st := &SourceTree{UseFastScanning: true}
-	st.ProcessDirectory("test_files/fast_scan_fail")
+	st := &SourceTree{
+		SrcRoot:         "test_files/fast_scan_fail",
+		UseFastScanning: true,
+	}
+	st.ProcessDirectory()
 	mainFile := st.FindSource("main.cc")
 	if len(mainFile.Deps) != 0 {
 		t.Errorf("Picked up an deps that weren't expected: %v", mainFile.Deps)
@@ -70,10 +91,11 @@ func TestUsingTypeGenerator(t *testing.T) {
 		Command:    []string{"cp", "$CPPDEP_INPUT_FILE", "$CPPDEP_OUTPUT_PREFIX.h"},
 	}
 	st := &SourceTree{
+		SrcRoot:    "test_files/generator_compile",
 		Generators: []Generator{cg, hg},
 		BuildDir:   outputDir,
 	}
-	st.ProcessDirectory("test_files/generator_compile")
+	st.ProcessDirectory()
 	mainFile := st.FindSource("main.cc")
 	if mainFile == nil {
 		t.Errorf("Unable to find main file")
@@ -84,10 +106,11 @@ func TestUsingTypeGenerator(t *testing.T) {
 		genCount++
 	}
 	st2 := &SourceTree{
+		SrcRoot:    "test_files/generator_compile",
 		Generators: []Generator{cg, hg},
 		BuildDir:   outputDir,
 	}
-	st2.ProcessDirectory("test_files/generator_compile")
+	st2.ProcessDirectory()
 
 	if genCount != 0 {
 		t.Errorf("Expected no files to be generated because nothing was modified")

@@ -16,6 +16,7 @@ const (
 )
 
 type SourceTree struct {
+	SrcRoot     string
 	IncludeDirs []string
 	HeaderExts  []string
 	SourceExts  []string
@@ -49,7 +50,10 @@ func (st *SourceTree) GenDir() string {
 	return filepath.Join(st.BuildDir, "gen")
 }
 
-func (st *SourceTree) ProcessDirectory(rootDir string) error {
+func (st *SourceTree) ProcessDirectory() error {
+	if st.SrcRoot == "" {
+		return fmt.Errorf("SrcDir must not be empty")
+	}
 	if st.HeaderExts == nil {
 		st.HeaderExts = []string{".h", ".hpp", ".hh", ".hxx"}
 	}
@@ -120,7 +124,7 @@ func (st *SourceTree) ProcessDirectory(rootDir string) error {
 		return nil
 	}
 
-	filepath.Walk(rootDir, walkFunc)
+	filepath.Walk(st.SrcRoot, walkFunc)
 
 	// We need to run the generator here and add the output files to seen so they
 	// can be picked up in the dependency graph

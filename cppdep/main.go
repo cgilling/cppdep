@@ -91,6 +91,7 @@ func main() {
 			}
 
 			st := &cppdep.SourceTree{
+				SrcRoot:         *srcDir,
 				IncludeDirs:     config.Includes,
 				Libraries:       config.Libraries,
 				Concurrency:     *concurrency,
@@ -98,7 +99,7 @@ func main() {
 				Generators:      gens,
 				BuildDir:        config.BuildDir,
 			}
-			if err := st.ProcessDirectory(*srcDir); err != nil {
+			if err := st.ProcessDirectory(); err != nil {
 				log.Fatalf("Failed to process source directory: %s (%v)", *srcDir, err)
 			}
 			mainFile := st.FindSource(*binaryName + ".cc")

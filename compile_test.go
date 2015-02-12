@@ -22,8 +22,10 @@ func TestSimpleCompile(t *testing.T) {
 	}
 	defer os.RemoveAll(outputDir)
 
-	var st SourceTree
-	st.ProcessDirectory("test_files/simple")
+	st := SourceTree{
+		SrcRoot: "test_files/simple",
+	}
+	st.ProcessDirectory()
 
 	mainFile := st.FindSource("main.cc")
 
@@ -125,9 +127,10 @@ func TestSystemLibraryCompile(t *testing.T) {
 	defer os.RemoveAll(outputDir)
 
 	st := &SourceTree{
+		SrcRoot:   "test_files/gzcat",
 		Libraries: map[string][]string{"zlib.h": {"-lz"}},
 	}
-	st.ProcessDirectory("test_files/gzcat")
+	st.ProcessDirectory()
 
 	mainFile := st.FindSource("gzcat.cc")
 
@@ -158,8 +161,10 @@ func TestCompileFlags(t *testing.T) {
 	}
 	defer os.RemoveAll(outputDir)
 
-	var st SourceTree
-	st.ProcessDirectory("test_files/compiler_warning")
+	st := SourceTree{
+		SrcRoot: "test_files/compiler_warning",
+	}
+	st.ProcessDirectory()
 
 	mainFile := st.FindSource("main.cc")
 
@@ -193,10 +198,11 @@ func TestCompileUsingTypeGenerator(t *testing.T) {
 		Command:    []string{"cp", "$CPPDEP_INPUT_FILE", "$CPPDEP_OUTPUT_PREFIX.h"},
 	}
 	st := &SourceTree{
+		SrcRoot:    "test_files/generator_compile",
 		Generators: []Generator{cg, hg},
 		BuildDir:   outputDir,
 	}
-	st.ProcessDirectory("test_files/generator_compile")
+	st.ProcessDirectory()
 	mainFile := st.FindSource("main.cc")
 	if mainFile == nil {
 		t.Fatalf("Unable to find main file")
@@ -233,10 +239,11 @@ func TestCompileUsingShellGenerator(t *testing.T) {
 	}
 
 	st := &SourceTree{
+		SrcRoot:    "test_files/shell_generator",
 		Generators: []Generator{g},
 		BuildDir:   outputDir,
 	}
-	st.ProcessDirectory("test_files/shell_generator")
+	st.ProcessDirectory()
 	mainFile := st.FindSource("main.cc")
 	if mainFile == nil {
 		t.Fatalf("Unable to find main file")
