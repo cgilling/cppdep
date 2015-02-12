@@ -62,9 +62,9 @@ func TestShellGenerator(t *testing.T) {
 	}
 
 	outputPathHash := map[string]struct{}{
-		filepath.Join(outputDir, g.OutputFiles[0]): struct{}{},
-		filepath.Join(outputDir, g.OutputFiles[1]): struct{}{},
-		filepath.Join(outputDir, g.OutputFiles[2]): struct{}{},
+		filepath.Join(outputDir, g.OutputFiles[0]): {},
+		filepath.Join(outputDir, g.OutputFiles[1]): {},
+		filepath.Join(outputDir, g.OutputFiles[2]): {},
 	}
 	outputPaths := g.OutputPaths("", outputDir)
 	for _, path := range outputPaths {

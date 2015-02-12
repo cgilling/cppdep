@@ -51,6 +51,12 @@ func (g *TypeGenerator) OutputPaths(inputFile, outputDir string) []string {
 }
 
 func createEnvVarMap(inputFile, outputDir string) map[string]string {
+	if in, err := filepath.Abs(inputFile); err == nil {
+		inputFile = in
+	}
+	if out, err := filepath.Abs(outputDir); err == nil {
+		outputDir = out
+	}
 	return map[string]string{
 		"$CPPDEP_INPUT_DIR":     filepath.Dir(inputFile),
 		"$CPPDEP_INPUT_FILE":    inputFile,
@@ -118,6 +124,7 @@ func (g *ShellGenerator) OutputPaths(inputFile, outputDir string) []string {
 
 func (g *ShellGenerator) Generate(inputFile, outputDir string) error {
 	cmd := exec.Command("sh", g.ShellFilePath)
+	cmd.Env = os.Environ()
 	for evar, val := range createEnvVarMap(g.ShellFilePath, outputDir) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", evar[1:], val))
 	}

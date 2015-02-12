@@ -83,14 +83,10 @@ func main() {
 				})
 			}
 			for _, gen := range config.ShellGenerators {
-				absPath, err := filepath.Abs(gen.Path)
-				if err != nil {
-					log.Fatalf("Failed to get absolute path of provided shell file: %q", gen.Path)
-				}
 				gens = append(gens, &cppdep.ShellGenerator{
 					InputPaths:    gen.InputPaths,
 					OutputFiles:   gen.OutputFiles,
-					ShellFilePath: absPath,
+					ShellFilePath: filepath.Join(*srcDir, gen.Path),
 				})
 			}
 
