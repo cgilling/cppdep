@@ -130,7 +130,7 @@ func (g *ShellGenerator) Generate(inputFile, outputDir string) error {
 	}
 	cmd.Dir = filepath.Dir(g.ShellFilePath)
 	if !supressLogging {
-		fmt.Printf("Running Generate Script: %s\n", filepath.Base(g.ShellFilePath))
+		fmt.Printf("Running Generate Script: %s\n", g.ShellFilePath)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 	}
