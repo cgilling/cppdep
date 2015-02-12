@@ -28,6 +28,11 @@ type SourceTree struct {
 	// to be added, which would look something like this: {"libpq-fe.h": ["-L/usr/pgsql-9.2/lib", "-lpq"]}
 	Libraries map[string][]string
 
+	// SourceLibs are a way of defining a relationship where a single.h file is implemented by multiple
+	// source files in the source tree. The key is the path to the header file relative to the root of the
+	// source tree and the key is the list of source file paths relative to the root of the source tree.
+	SourceLibs map[string][]string
+
 	Generators []Generator
 
 	// BuildDir is the directory where build files will be places. This is used
@@ -80,6 +85,7 @@ func (st *SourceTree) ProcessDirectory() error {
 	}
 
 	walkFunc := func(path string, info os.FileInfo, err error) error {
+		//fmt.Printf("Walking path %q\n", path)
 		if err != nil {
 			return err
 		}
@@ -161,6 +167,15 @@ func (st *SourceTree) ProcessDirectory() error {
 
 	// Now scan all the files looking for includes and creating a dependency graph
 
+	sourceLibs := make(map[string][]string)
+	for hpath, implPaths := range st.SourceLibs {
+		var paths []string
+		for _, p := range implPaths {
+			paths = append(paths, filepath.Join(st.SrcRoot, p))
+		}
+		sourceLibs[filepath.Join(st.SrcRoot, hpath)] = paths
+	}
+
 	searchPath := []string{"placeholder", genDir}
 	searchPath = append(searchPath, st.IncludeDirs...)
 
@@ -177,12 +192,24 @@ func (st *SourceTree) ProcessDirectory() error {
 		}
 
 		if file.Type == HeaderType {
-			dotIndex := strings.LastIndex(file.Path, ".")
-			for _, sourceExt := range st.SourceExts {
-				testPath := file.Path[0:dotIndex] + sourceExt
-				if pair, ok := seen[testPath]; ok {
-					file.SourcePair = pair
+			for hpath, implPaths := range sourceLibs {
+				if hpath == file.Path {
+					for _, path := range implPaths {
+						if implFile, ok := seen[path]; ok {
+							file.ImplFiles = append(file.ImplFiles, implFile)
+						}
+					}
 					break
+				}
+			}
+			if len(file.ImplFiles) == 0 {
+				dotIndex := strings.LastIndex(file.Path, ".")
+				for _, sourceExt := range st.SourceExts {
+					testPath := file.Path[0:dotIndex] + sourceExt
+					if pair, ok := seen[testPath]; ok {
+						file.ImplFiles = append(file.ImplFiles, pair)
+						break
+					}
 				}
 			}
 		}
@@ -241,12 +268,12 @@ func (st *SourceTree) FindSource(name string) *File {
 }
 
 type File struct {
-	Path       string
-	Deps       []*File
-	Type       int
-	SourcePair *File
-	Libs       []string
-	ModTime    time.Time
+	Path      string
+	Deps      []*File
+	Type      int
+	ImplFiles []*File // the list of files that implement the functionality defined in this file
+	Libs      []string
+	ModTime   time.Time
 
 	// stMu used to ensure that only one goroutine is traversing the dependency
 	// tree at any one time.
@@ -272,7 +299,7 @@ func (f *File) DepList() []*File {
 }
 
 // DepList will return the list of paths for all dependencies of f. It will follow
-// the SourcePair of header files as well. Then intended use being that one could
+// the ImplFiles of header files as well. Then intended use being that one could
 // find all the files needed to compile a main .cc file.
 func (f *File) DepListFollowSource() []*File {
 	if f.stMu != nil {
@@ -295,9 +322,13 @@ func (f *File) generateDepList(followSource bool) []*File {
 		dl = append(dl, dep)
 		dl = append(dl, dep.generateDepList(followSource)...)
 	}
-	if followSource && f.SourcePair != nil && !f.SourcePair.visited {
-		dl = append(dl, f.SourcePair)
-		dl = append(dl, f.SourcePair.generateDepList(followSource)...)
+	if followSource && f.ImplFiles != nil {
+		for _, source := range f.ImplFiles {
+			if !source.visited {
+				dl = append(dl, source)
+				dl = append(dl, source.generateDepList(followSource)...)
+			}
+		}
 	}
 	return dl
 }
@@ -310,7 +341,9 @@ func (f *File) unvisitDeps(followSource bool) {
 	for _, dep := range f.Deps {
 		dep.unvisitDeps(followSource)
 	}
-	if followSource && f.SourcePair != nil {
-		f.SourcePair.unvisitDeps(followSource)
+	if followSource && f.ImplFiles != nil {
+		for _, source := range f.ImplFiles {
+			source.unvisitDeps(followSource)
+		}
 	}
 }

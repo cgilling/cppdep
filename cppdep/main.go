@@ -15,6 +15,7 @@ import (
 type Config struct {
 	Includes        []string
 	Libraries       map[string][]string
+	SourceLibs      map[string][]string
 	Flags           []string
 	BuildDir        string
 	TypeGenerators  []TypeGeneratorConfig
@@ -94,6 +95,7 @@ func main() {
 				SrcRoot:         *srcDir,
 				IncludeDirs:     config.Includes,
 				Libraries:       config.Libraries,
+				SourceLibs:      config.SourceLibs,
 				Concurrency:     *concurrency,
 				UseFastScanning: *fast,
 				Generators:      gens,

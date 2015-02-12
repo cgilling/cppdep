@@ -119,6 +119,29 @@ func TestSimpleCompile(t *testing.T) {
 	}
 }
 
+func TestCompileSourceLib(t *testing.T) {
+	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
+	if err != nil {
+		t.Fatalf("Failed to setup output dir")
+	}
+	defer os.RemoveAll(outputDir)
+
+	st := &SourceTree{
+		SrcRoot:    "test_files/source_lib",
+		SourceLibs: map[string][]string{"lib.h": {"liba.cc", "libb.cc"}},
+	}
+	st.ProcessDirectory()
+
+	mainFile := st.FindSource("main.cc")
+
+	c := &Compiler{OutputDir: outputDir}
+	_, err = c.Compile(mainFile)
+
+	if err != nil {
+		t.Fatalf("Compile returned error: %v", err)
+	}
+}
+
 func TestSystemLibraryCompile(t *testing.T) {
 	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
 	if err != nil {
