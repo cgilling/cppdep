@@ -207,9 +207,6 @@ func (st *SourceTree) ProcessDirectory() error {
 		sourceLibs[filepath.Join(st.SrcRoot, hpath)] = paths
 	}
 
-	searchPath := []string{"placeholder", genDir}
-	searchPath = append(searchPath, st.IncludeDirs...)
-
 	processFile := func(file *File) error {
 		fp, err := os.Open(file.Path)
 		if err != nil {
@@ -245,7 +242,8 @@ func (st *SourceTree) ProcessDirectory() error {
 			}
 		}
 
-		searchPath[0] = filepath.Dir(file.Path)
+		searchPath := []string{filepath.Dir(file.Path), genDir}
+		searchPath = append(searchPath, st.IncludeDirs...)
 
 		for scan.Scan() {
 			if scan.Type() == BracketIncludeType {
