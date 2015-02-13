@@ -55,6 +55,7 @@ func main() {
 	rootCmd := cli.App("cppdep", "dependency graph and easy compiles")
 	configPath := rootCmd.StringOpt("config", "", "path to yaml config")
 	rootCmd.Command("build", "build binaries from a given directory", func(cmd *cli.Cmd) {
+		cmd.Spec = "[--concurrency] [--fast] [--regex] SRCDIR [BINARY_NAME]"
 		srcDir := cmd.StringArg("SRCDIR", "./", "")
 		binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc")
 		concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
@@ -119,7 +120,12 @@ func main() {
 				Concurrency: *concurrency,
 			}
 			var files []*cppdep.File
-			if *regex {
+			if *binaryName == "" {
+				files, err = st.FindMainFiles()
+				if err != nil {
+					log.Fatalf("failes to automatically find main files: %v", err)
+				}
+			} else if *regex {
 				files, err = st.FindSources(*binaryName + ".cc")
 				if err != nil {
 					log.Fatalf("invalid regex: %q", *binaryName)

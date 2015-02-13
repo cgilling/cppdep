@@ -1,6 +1,7 @@
 package cppdep
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -308,6 +309,48 @@ func (st *SourceTree) FindSources(regex string) ([]*File, error) {
 		}
 	}
 	return sources, nil
+}
+
+type inVectorValue struct {
+	file  *File
+	count int
+}
+
+func (st *SourceTree) FindMainFiles() ([]*File, error) {
+	inVectors := make(map[string]inVectorValue)
+	for _, file := range st.sources {
+		if _, ok := inVectors[file.Path]; !ok {
+			inVectors[file.Path] = inVectorValue{file: file}
+		}
+		deps := file.DepListFollowSource()
+		for _, dep := range deps {
+			if _, ok := inVectors[dep.Path]; !ok {
+				inVectors[dep.Path] = inVectorValue{file: dep}
+			}
+			v := inVectors[dep.Path]
+			v.count++
+			inVectors[dep.Path] = v
+		}
+	}
+
+	mainRegexp, err := regexp.Compile(`\s*int\s*main\s*\(\s*int\s+[a-zA-Z]+\s*,\s*char\s*\*\*?\s*[a-zA-Z]+\s*\[?\s*\]?\s*\)\s*{`)
+	if err != nil {
+		return nil, err
+	}
+	var files []*File
+	for _, v := range inVectors {
+		if v.count == 0 {
+			fp, err := os.Open(v.file.Path)
+			if err != nil {
+				return nil, err
+			}
+			if mainRegexp.MatchReader(bufio.NewReader(fp)) {
+				files = append(files, v.file)
+			}
+			fp.Close()
+		}
+	}
+	return files, nil
 }
 
 type File struct {

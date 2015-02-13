@@ -170,6 +170,50 @@ func TestFindSources(t *testing.T) {
 	}
 }
 
+func TestFindMainFiles(t *testing.T) {
+	st := SourceTree{
+		SrcRoot: "test_files/simple",
+	}
+	st.ProcessDirectory()
+	mainFiles, err := st.FindMainFiles()
+	switch {
+	case err != nil:
+		t.Errorf("FindMainFiles returned error: %v", err)
+	case len(mainFiles) != 2:
+		t.Errorf("Expected 2 main files to be found, got %d", len(mainFiles))
+	case countEntries(mainFiles, "test_files/simple/main.cc") == 1:
+		t.Errorf("Expected main.cc to be one of the main files")
+	case countEntries(mainFiles, "test_files/simple/mainb.cc") == 1:
+		t.Errorf("Expected mainb.cc to be one of the main files")
+	}
+
+	st = SourceTree{
+		SrcRoot: "test_files/find_main_files",
+	}
+	st.ProcessDirectory()
+	mainFiles, err = st.FindMainFiles()
+	switch {
+	case err != nil:
+		t.Errorf("Failed to find main files: %v", err)
+	case len(mainFiles) != 1:
+		t.Errorf("Expected to only find 1 main file: got %d", len(mainFiles))
+	}
+
+	// TODO: need to test looking for main statements in files that seem like they
+	// would be main files, as they could just be orphaned .cc files. (code not
+	// implemented yet either)
+}
+
+func countEntries(list []*File, target string) int {
+	count := 0
+	for _, val := range list {
+		if val.Path == target {
+			count++
+		}
+	}
+	return count
+}
+
 func TestFileDepList(t *testing.T) {
 	a := &File{Path: "a.h"}
 	b := &File{Path: "b.h", Deps: []*File{a}}
@@ -180,16 +224,6 @@ func TestFileDepList(t *testing.T) {
 			a,
 			b,
 		},
-	}
-
-	countEntries := func(list []*File, target string) int {
-		count := 0
-		for _, val := range list {
-			if val.Path == target {
-				count++
-			}
-		}
-		return count
 	}
 
 	depList := root.DepList()
