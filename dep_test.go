@@ -45,6 +45,23 @@ func TestDepSimple(t *testing.T) {
 	}
 }
 
+func TestExcludeDirs(t *testing.T) {
+	st := &SourceTree{
+		SrcRoot:     "test_files/exclude_dir",
+		ExcludeDirs: []string{"subdir"},
+	}
+	st.ProcessDirectory()
+
+	mainb := st.FindSource("mainb.cc")
+	if mainb != nil {
+		t.Errorf("Failed to exclude directory")
+	}
+	main := st.FindSource("main.cc")
+	if main == nil {
+		t.Errorf("Failed find file in non excluded directory")
+	}
+}
+
 func TestSourceLib(t *testing.T) {
 	st := &SourceTree{
 		SrcRoot:    "test_files/source_lib",

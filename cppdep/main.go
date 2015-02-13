@@ -14,6 +14,7 @@ import (
 
 type Config struct {
 	Includes        []string
+	Excludes        []string
 	Libraries       map[string][]string
 	SourceLibs      map[string][]string
 	Flags           []string
@@ -99,6 +100,7 @@ func main() {
 			st := &cppdep.SourceTree{
 				SrcRoot:         *srcDir,
 				IncludeDirs:     config.Includes,
+				ExcludeDirs:     config.Excludes,
 				Libraries:       config.Libraries,
 				SourceLibs:      config.SourceLibs,
 				Concurrency:     *concurrency,

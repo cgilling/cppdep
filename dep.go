@@ -19,6 +19,7 @@ const (
 type SourceTree struct {
 	SrcRoot     string
 	IncludeDirs []string
+	ExcludeDirs []string
 	HeaderExts  []string
 	SourceExts  []string
 
@@ -72,6 +73,11 @@ func (st *SourceTree) setup() error {
 			st.IncludeDirs[i] = filepath.Join(st.SrcRoot, inc)
 		}
 	}
+	for i, ex := range st.ExcludeDirs {
+		if !filepath.IsAbs(ex) {
+			st.ExcludeDirs[i] = filepath.Join(st.SrcRoot, ex)
+		}
+	}
 
 	if st.HeaderExts == nil {
 		st.HeaderExts = []string{".h", ".hpp", ".hh", ".hxx"}
@@ -106,11 +112,15 @@ func (st *SourceTree) ProcessDirectory() error {
 	}
 
 	walkFunc := func(path string, info os.FileInfo, err error) error {
-		//fmt.Printf("Walking path %q\n", path)
 		if err != nil {
 			return err
 		}
 		if info.IsDir() {
+			for _, dir := range st.ExcludeDirs {
+				if path == dir {
+					return filepath.SkipDir
+				}
+			}
 			return nil
 		}
 
