@@ -69,7 +69,6 @@ func (c *Compiler) CompileAll(files []*File) (paths []string, err error) {
 				mu.Lock()
 				compileErr = err
 				mu.Unlock()
-				break
 			}
 		}
 	}
