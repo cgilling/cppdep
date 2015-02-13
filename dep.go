@@ -77,7 +77,7 @@ func (st *SourceTree) setup() error {
 		st.HeaderExts = []string{".h", ".hpp", ".hh", ".hxx"}
 	}
 	if st.SourceExts == nil {
-		st.SourceExts = []string{".cc", ".c"}
+		st.SourceExts = []string{".cc", ".cxx", ".c"}
 	}
 	if st.Concurrency == 0 {
 		st.Concurrency = 1

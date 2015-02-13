@@ -13,8 +13,6 @@ import (
 
 var (
 	ErrCompilerError = errors.New("compiler returned an error")
-
-	errNoCompileNeeded = errors.New("Compile skipped because of no modifications")
 )
 
 type Compiler struct {
@@ -25,28 +23,38 @@ type Compiler struct {
 	Concurrency int
 }
 
-func (c *Compiler) Compile(file *File) (path string, err error) {
-	var mu sync.Mutex
-	var compileErr error
-	var objList []string
-	var libList []string
-	var objWasBuilt bool
+// CompileAll will compile binaries whose main functions are defined by the entries
+// in files. If there is any compile error for any of the binaries CompileAll will
+// return false. Upon success the path of all the output binaries are returned in
+// the same order as the input files.
+func (c *Compiler) CompileAll(files []*File) (paths []string, err error) {
+	uniqueSources := make(map[string]*File)
+	var fileSources [][]*File
+	var fileLibs [][]string
+	for _, file := range files {
+		deps := file.DepListFollowSource()
+		deps = append(deps, file)
+		sources, libs := filterDeps(deps)
+		for _, source := range sources {
+			uniqueSources[source.Path] = source
+		}
+		fileSources = append(fileSources, sources)
+		fileLibs = append(fileLibs, libs)
+	}
 
 	concurrency := c.Concurrency
 	if concurrency == 0 {
 		concurrency = 1
 	}
 
-	deps := file.DepListFollowSource()
-	deps = append(deps, file)
-
+	var mu sync.Mutex
+	var compileErr error
 	var wg sync.WaitGroup
-	depCh := make(chan *File)
+	sourceCh := make(chan *File)
 
 	compileDepLoop := func() {
 		defer wg.Done()
-		for dep := range depCh {
-			var path string
+		for source := range sourceCh {
 			var err error
 
 			mu.Lock()
@@ -55,33 +63,14 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 			if cerr != nil {
 				continue
 			}
-
-			if dep.Type == SourceType {
-				path, err = c.makeObject(dep)
-			} else {
-				err = errNoCompileNeeded
-			}
+			_, err = c.makeObject(source)
 
 			if err != nil {
-				if err != errNoCompileNeeded {
-					mu.Lock()
-					compileErr = err
-					mu.Unlock()
-					break
-				}
+				mu.Lock()
+				compileErr = err
+				mu.Unlock()
+				break
 			}
-
-			mu.Lock()
-			if err == nil {
-				objWasBuilt = true
-			}
-			if dep.Libs != nil {
-				libList = append(libList, dep.Libs...)
-			}
-			if path != "" {
-				objList = append(objList, path)
-			}
-			mu.Unlock()
 		}
 	}
 
@@ -90,23 +79,72 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 		go compileDepLoop()
 	}
 
-	for _, dep := range deps {
-		depCh <- dep
+	for _, source := range uniqueSources {
+		sourceCh <- source
 	}
-	close(depCh)
+	close(sourceCh)
 	wg.Wait()
 	if compileErr != nil {
-		return "", compileErr
+		return nil, compileErr
 	}
 
-	// TODO: create the real solution here, this won't work if relinking fails and the lib already exists, then retrying
-	//			 the build still won't fix this.
-	_, err = os.Stat(c.binPath(file))
-	if err == nil && !objWasBuilt {
-		return c.binPath(file), nil
+	binCh := make(chan binaryInfo)
+	var binWg sync.WaitGroup
+
+	binWg.Add(concurrency)
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer binWg.Done()
+			for binInfo := range binCh {
+				mu.Lock()
+				cerr := compileErr
+				mu.Unlock()
+				if cerr != nil {
+					continue
+				}
+
+				var objects []string
+				for _, file := range binInfo.sources {
+					objects = append(objects, c.objectPath(file))
+				}
+
+				_, err := c.makeBinary(binInfo.file, objects, binInfo.libs)
+				if err != nil {
+					mu.Lock()
+					compileErr = err
+					mu.Unlock()
+				}
+			}
+		}()
 	}
 
-	return c.makeBinary(file, objList, libList)
+	for i, file := range files {
+		binCh <- binaryInfo{
+			file:    file,
+			sources: fileSources[i],
+			libs:    fileLibs[i],
+		}
+	}
+	close(binCh)
+	binWg.Wait()
+	if compileErr != nil {
+		return nil, compileErr
+	}
+
+	var binPaths []string
+	for _, file := range files {
+		binPaths = append(binPaths, c.binPath(file))
+	}
+
+	return binPaths, nil
+}
+
+func (c *Compiler) Compile(file *File) (path string, err error) {
+	paths, err := c.CompileAll([]*File{file})
+	if err != nil {
+		return "", err
+	}
+	return paths[0], nil
 }
 
 func (c *Compiler) includeDirective() []string {
@@ -125,33 +163,30 @@ var (
 	makeBinaryHook func(file *File)
 )
 
-func (c *Compiler) makeObject(file *File) (path string, err error) {
+func (c *Compiler) objectPath(file *File) string {
 	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")
-	objectPath := filepath.Join(c.OutputDir, base[:dotIndex]+".o")
+	return filepath.Join(c.OutputDir, base[:dotIndex]+".o")
+}
 
-	needsCompile := false
-	var modTime time.Time
-	info, err := os.Stat(objectPath)
-	if err == nil {
-		modTime = info.ModTime()
-	} else {
-		needsCompile = true
-	}
+func (c *Compiler) makeObject(file *File) (path string, err error) {
+	objectPath := c.objectPath(file)
 
-	deps := append(file.DepList(), file)
-	for _, dep := range deps {
-		if dep.Type != HeaderType && dep != file {
-			continue
-		}
-		if dep.ModTime.After(modTime) {
-			needsCompile = true
-			break
+	var depPaths []string
+	for _, dep := range append(file.DepList(), file) {
+		if dep.Type == HeaderType || dep == file {
+			depPaths = append(depPaths, dep.Path)
 		}
 	}
 
-	if !needsCompile {
-		return objectPath, errNoCompileNeeded
+	// NOTE: in this instance we could speed this up by using the dep files
+	//			 ModTime field. This would be faster, but wouldn't use this
+	//			 generic method. Can address if it becomes an issue.
+	needsCompile, err := needsRebuild(depPaths, []string{objectPath})
+	if err != nil {
+		return "", err
+	} else if !needsCompile {
+		return objectPath, nil
 	}
 
 	cmd := exec.Command("g++", "-o", objectPath)
@@ -177,8 +212,21 @@ func (c *Compiler) binPath(file *File) string {
 	return filepath.Join(c.OutputDir, base[:dotIndex])
 }
 
+type binaryInfo struct {
+	file    *File
+	sources []*File
+	libs    []string
+}
+
 func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path string, err error) {
 	binaryPath := c.binPath(file)
+	needsCompile, err := needsRebuild(objectPaths, []string{binaryPath})
+	if err != nil {
+		return "", err
+	} else if !needsCompile {
+		return binaryPath, nil
+	}
+
 	cmd := exec.Command("g++", "-o", binaryPath)
 	cmd.Args = append(cmd.Args, c.Flags...)
 	cmd.Args = append(cmd.Args, objectPaths...)
@@ -193,4 +241,40 @@ func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path s
 	}
 	err = cmd.Run()
 	return binaryPath, err
+}
+
+func filterDeps(deps []*File) (sources []*File, libs []string) {
+	for _, dep := range deps {
+		if dep.Type == SourceType {
+			sources = append(sources, dep)
+		}
+		if dep.Libs != nil {
+			libs = append(libs, dep.Libs...)
+		}
+	}
+	return sources, libs
+}
+
+func needsRebuild(inputPaths, outputPaths []string) (bool, error) {
+	var inputModTime time.Time
+	for _, path := range inputPaths {
+		info, err := os.Stat(path)
+		if err != nil {
+			return false, err
+		} else if info.ModTime().After(inputModTime) {
+			inputModTime = info.ModTime()
+		}
+	}
+
+	outputModTime := time.Now()
+	for _, path := range outputPaths {
+		info, err := os.Stat(path)
+		if err != nil {
+			outputModTime = time.Time{}
+			break
+		} else if info.ModTime().Before(outputModTime) {
+			outputModTime = info.ModTime()
+		}
+	}
+	return inputModTime.After(outputModTime), nil
 }

@@ -91,6 +91,7 @@ func TestSimpleCompile(t *testing.T) {
 	}
 	origModTime := ah.ModTime
 	ah.ModTime = time.Now()
+	os.Chtimes(ah.Path, ah.ModTime, ah.ModTime)
 
 	_, err = c.Compile(mainFile)
 	switch {
@@ -103,10 +104,12 @@ func TestSimpleCompile(t *testing.T) {
 	}
 
 	ah.ModTime = origModTime
+	os.Chtimes(ah.Path, ah.ModTime, ah.ModTime)
 	objCount = 0
 	binCount = 0
 
 	mainFile.ModTime = time.Now()
+	os.Chtimes(mainFile.Path, mainFile.ModTime, mainFile.ModTime)
 
 	_, err = c.Compile(mainFile)
 	switch {

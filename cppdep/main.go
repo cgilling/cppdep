@@ -130,13 +130,7 @@ func main() {
 				files = append(files, mainFile)
 			}
 
-			for _, file := range files {
-				_, err := c.Compile(file)
-				if err != nil {
-					log.Printf("ERROR Failed to compile file: %q (%v)", file.Path, err)
-					continue
-				}
-			}
+			c.CompileAll(files)
 		}
 	})
 
