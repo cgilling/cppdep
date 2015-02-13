@@ -285,5 +285,38 @@ func TestCompileUsingShellGenerator(t *testing.T) {
 	}
 }
 
-// TODO: won't try and recompile binary if .o files haven't changed but build
-// failed for some other reason (missing library or something)
+func TestCompileAllGeneratesObjectFilesOnce(t *testing.T) {
+	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
+	if err != nil {
+		t.Fatalf("Failed to setup output dir")
+	}
+	defer os.RemoveAll(outputDir)
+
+	st := SourceTree{
+		SrcRoot: "test_files/simple",
+	}
+	st.ProcessDirectory()
+
+	files := []*File{st.FindSource("main.cc"), st.FindSource("mainb.cc")}
+
+	c := &Compiler{OutputDir: outputDir}
+
+	objCount := 0
+	binCount := 0
+	makeObjectHook = func(file *File) {
+		objCount++
+	}
+	makeBinaryHook = func(file *File) {
+		binCount++
+	}
+
+	_, err = c.CompileAll(files)
+	switch {
+	case err != nil:
+		t.Errorf("CompileAll returned error: %v", err)
+	case objCount != 3:
+		t.Errorf("Expected 3 object files to be built, actually %d were built", objCount)
+	case binCount != 2:
+		t.Errorf("Expected 2 binary files to be built, actually %d were built", binCount)
+	}
+}
