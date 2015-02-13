@@ -58,6 +58,7 @@ func main() {
 		binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc")
 		concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
 		fast := cmd.BoolOpt("fast", false, "Set to enable fast file scanning")
+		regex := cmd.BoolOpt("regex", false, "Treat binaryName as a path regex")
 
 		cmd.Action = func() {
 			fmt.Printf("config: %q, srcDir: %q\n", *configPath, *srcDir)
@@ -91,6 +92,10 @@ func main() {
 				})
 			}
 
+			if config.BuildDir, err = filepath.Abs(config.BuildDir); err != nil {
+				log.Fatalf("Failed to get absolute path of build dir")
+			}
+
 			st := &cppdep.SourceTree{
 				SrcRoot:         *srcDir,
 				IncludeDirs:     config.Includes,
@@ -104,10 +109,6 @@ func main() {
 			if err := st.ProcessDirectory(); err != nil {
 				log.Fatalf("Failed to process source directory: %s (%v)", *srcDir, err)
 			}
-			mainFile := st.FindSource(*binaryName + ".cc")
-			if mainFile == nil {
-				log.Fatalf("Unable to find source for %q", *binaryName)
-			}
 
 			c := &cppdep.Compiler{
 				OutputDir:   config.BuildDir,
@@ -115,12 +116,27 @@ func main() {
 				Flags:       config.Flags,
 				Concurrency: *concurrency,
 			}
-			binaryPath, err := c.Compile(mainFile)
-			if err != nil {
-				log.Fatalf("Failed to compile main file at %s (%v)", mainFile.Path, err)
+			var files []*cppdep.File
+			if *regex {
+				files, err = st.FindSources(*binaryName + ".cc")
+				if err != nil {
+					log.Fatalf("invalid regex: %q", *binaryName)
+				}
+			} else {
+				mainFile := st.FindSource(*binaryName + ".cc")
+				if mainFile == nil {
+					log.Fatalf("Unable to find source for %q", *binaryName)
+				}
+				files = append(files, mainFile)
 			}
-			log.Printf("Compiled binary can be found at: %s", binaryPath)
 
+			for _, file := range files {
+				_, err := c.Compile(file)
+				if err != nil {
+					log.Printf("ERROR Failed to compile file: %q (%v)", file.Path, err)
+					continue
+				}
+			}
 		}
 	})
 

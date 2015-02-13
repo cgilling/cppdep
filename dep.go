@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -55,10 +56,23 @@ func (st *SourceTree) GenDir() string {
 	return filepath.Join(st.BuildDir, "gen")
 }
 
-func (st *SourceTree) ProcessDirectory() error {
+// setup ensures needed paths are absolute, and sets up default values
+func (st *SourceTree) setup() error {
 	if st.SrcRoot == "" {
 		return fmt.Errorf("SrcDir must not be empty")
 	}
+	absSrcRoot, err := filepath.Abs(st.SrcRoot)
+	if err != nil {
+		return err
+	}
+	st.SrcRoot = absSrcRoot
+
+	for i, inc := range st.IncludeDirs {
+		if !filepath.IsAbs(inc) {
+			st.IncludeDirs[i] = filepath.Join(st.SrcRoot, inc)
+		}
+	}
+
 	if st.HeaderExts == nil {
 		st.HeaderExts = []string{".h", ".hpp", ".hh", ".hxx"}
 	}
@@ -70,6 +84,13 @@ func (st *SourceTree) ProcessDirectory() error {
 	}
 	if len(st.Generators) > 0 && st.BuildDir == "" {
 		return fmt.Errorf("Build dir must be set if Generators are used")
+	}
+	return nil
+}
+
+func (st *SourceTree) ProcessDirectory() error {
+	if err := st.setup(); err != nil {
+		return err
 	}
 
 	// First collect all the files
@@ -265,6 +286,20 @@ func (st *SourceTree) FindSource(name string) *File {
 		}
 	}
 	return nil
+}
+
+func (st *SourceTree) FindSources(regex string) ([]*File, error) {
+	var sources []*File
+	r, err := regexp.Compile(filepath.Join(st.SrcRoot, regex))
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range st.sources {
+		if r.MatchString(file.Path) {
+			sources = append(sources, file)
+		}
+	}
+	return sources, nil
 }
 
 type File struct {

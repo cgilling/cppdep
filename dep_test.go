@@ -3,9 +3,20 @@ package cppdep
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
+
+var cwd string
+
+func init() {
+	c, err := os.Getwd()
+	if err != nil {
+		panic("Unable to find cwd")
+	}
+	cwd = c
+}
 
 func TestDepSimple(t *testing.T) {
 	st := SourceTree{
@@ -25,7 +36,7 @@ func TestDepSimple(t *testing.T) {
 		t.Fatalf("a.cc not amoung source list")
 	case len(mainFile.Deps) != 1:
 		t.Errorf("Expected to find one dependency for main.cc, found %d", len(mainFile.Deps))
-	case mainFile.Deps[0].Path != "test_files/simple/a.h":
+	case mainFile.Deps[0].Path != filepath.Join(cwd, "test_files/simple/a.h"):
 		t.Errorf("Did not find a.h as dependency for main.cc")
 	case mainFile.Deps[0].Type != HeaderType:
 		t.Errorf("Expected a.h to be header type")
@@ -120,6 +131,26 @@ func TestUsingTypeGenerator(t *testing.T) {
 
 	// TODO: test that a file matched by a generator is still available as a file
 	// 			 for other to include
+}
+
+func TestFindSources(t *testing.T) {
+	st := SourceTree{
+		SrcRoot: "test_files",
+	}
+	st.ProcessDirectory()
+
+	sources, err := st.FindSources(`source_lib/lib.*\.cc`)
+	switch {
+	case err != nil:
+		t.Errorf("FindSources returned error: %v", err)
+	case len(sources) != 2:
+		t.Errorf("Expected two sources to be returned: got %d", len(sources))
+	}
+
+	_, err = st.FindSources(`\x1`)
+	if err == nil {
+		t.Errorf("Expected FindSources to fail when given a bad regex")
+	}
 }
 
 func TestFileDepList(t *testing.T) {

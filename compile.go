@@ -99,7 +99,10 @@ func (c *Compiler) Compile(file *File) (path string, err error) {
 		return "", compileErr
 	}
 
-	if !objWasBuilt {
+	// TODO: create the real solution here, this won't work if relinking fails and the lib already exists, then retrying
+	//			 the build still won't fix this.
+	_, err = os.Stat(c.binPath(file))
+	if err == nil && !objWasBuilt {
 		return c.binPath(file), nil
 	}
 
