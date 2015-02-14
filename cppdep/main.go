@@ -98,6 +98,11 @@ func main() {
 		if config.BuildDir == "" {
 			log.Fatalf("BuildDir must be set")
 		}
+
+		if !filepath.IsAbs(config.BuildDir) {
+			config.BuildDir = filepath.Join(filepath.Dir(*configPath), config.BuildDir)
+		}
+
 		err := os.MkdirAll(config.BuildDir, 0755)
 		if err != nil {
 			log.Fatalf("Failed to create build dir: %s (%v)", config.BuildDir, err)
