@@ -58,6 +58,7 @@ func main() {
 	concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
 	fast := cmd.BoolOpt("fast", false, "Set to enable fast file scanning")
 	regex := cmd.BoolOpt("regex", false, "Treat binaryName as a path regex")
+	list := cmd.BoolOpt("list", false, "Lists paths of all binaries that would be generated, but does not compile them")
 	srcDir := cmd.StringArg("SRCDIR", "./", "")
 	binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc")
 
@@ -137,7 +138,13 @@ func main() {
 			files = append(files, mainFile)
 		}
 
-		c.CompileAll(files)
+		if *list {
+			for _, file := range files {
+				fmt.Println(c.BinPath(file))
+			}
+		} else {
+			c.CompileAll(files)
+		}
 	}
 
 	cmd.Run(os.Args)

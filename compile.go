@@ -23,6 +23,13 @@ type Compiler struct {
 	Concurrency int
 }
 
+// BinPath returns the path where the binary for a given main file will be written.
+func (c *Compiler) BinPath(file *File) string {
+	base := filepath.Base(file.Path)
+	dotIndex := strings.LastIndex(base, ".")
+	return filepath.Join(c.OutputDir, base[:dotIndex])
+}
+
 // CompileAll will compile binaries whose main functions are defined by the entries
 // in files. If there is any compile error for any of the binaries CompileAll will
 // return false. Upon success the path of all the output binaries are returned in
@@ -132,7 +139,7 @@ func (c *Compiler) CompileAll(files []*File) (paths []string, err error) {
 
 	var binPaths []string
 	for _, file := range files {
-		binPaths = append(binPaths, c.binPath(file))
+		binPaths = append(binPaths, c.BinPath(file))
 	}
 
 	return binPaths, nil
@@ -205,12 +212,6 @@ func (c *Compiler) makeObject(file *File) (path string, err error) {
 	return objectPath, err
 }
 
-func (c *Compiler) binPath(file *File) string {
-	base := filepath.Base(file.Path)
-	dotIndex := strings.LastIndex(base, ".")
-	return filepath.Join(c.OutputDir, base[:dotIndex])
-}
-
 type binaryInfo struct {
 	file    *File
 	sources []*File
@@ -218,7 +219,7 @@ type binaryInfo struct {
 }
 
 func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path string, err error) {
-	binaryPath := c.binPath(file)
+	binaryPath := c.BinPath(file)
 	needsCompile, err := needsRebuild(objectPaths, []string{binaryPath})
 	if err != nil {
 		return "", err
