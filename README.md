@@ -16,12 +16,13 @@ within the source tree.
 ## Usage
 
 ```shell
-cppdep --config [CONFIG_PATH] build [--fast] [--concurrency VALUE] [--regex] SRCDIR [BINARY_NAME]
+cppdep [--config CONFIG_PATH] [--fast] [--concurrency VALUE] [--regex] [--src SRCDIR] [BINARY_NAME]
 ```
-* `--config`: path to the yaml config file defining the parameters for the build.
+* `--config`: path to the yaml config file defining the parameters for the build. If not provided $CWD and all parent directories in order will be seaches for a cppdep.yml file.
 * `--fast`: Enable fast include scanning. This means that scanning a file for include statements will stop as soon as a line is found that is not a preprocessor statement, comment, or empty line. (This significantly speeds up the dependency phase – on my test machine/source tree generation time goes from 5s to 0.3s)
-* `--regex`: interpret BINARY_NAME as a regular expression as defined by the [regexp package](http://golang.org/pkg/regexp/)
 * `--concurrency`: maximum number of concurrent compiles. Also controls the number of files that will be concurrently scanned for dependencies. Because dependency scanning is CPU intensive, it is recommended to test and see what value of `GOMAXPROCS` is appropriate. (Somewhere between 2-4 seems about right based on my testing)
+* `--regex`: interpret BINARY_NAME as a regular expression as defined by the [regexp package](http://golang.org/pkg/regexp/)
+* `--src`: path to src directory. If not provided, the `srdir` key in the config file will be used.
 
 ## Config
 
