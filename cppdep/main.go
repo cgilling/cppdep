@@ -52,6 +52,20 @@ func (c *Config) ReadFile(path string) error {
 	return nil
 }
 
+func searchForConfigFile(dir string) string {
+	var path string
+	for dir != "/" && path == "" {
+		testpath := filepath.Join(dir, "cppdep.yml")
+		fmt.Println(testpath)
+		if _, err := os.Stat(testpath); err == nil {
+			path = testpath
+			break
+		}
+		dir = filepath.Dir(dir)
+	}
+	return path
+}
+
 func main() {
 	cmd := cli.App("cppdep", "dependency graph and easy compiles")
 	cmd.Spec = "[OPTIONS] [BINARY_NAME]"
@@ -64,13 +78,23 @@ func main() {
 	binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc")
 
 	cmd.Action = func() {
-		fmt.Printf("config: %q, srcDir: %q\n", *configPath, *srcDir)
 		config := &Config{}
-		if *configPath != "" {
-			if err := config.ReadFile(*configPath); err != nil {
-				log.Fatalf("Failed to read config file: %q", err)
+		if *configPath == "" {
+			cwd, err := os.Getwd()
+			if err != nil {
+				log.Fatalf("Failed to get cwd: %v", err)
 			}
+			*configPath = searchForConfigFile(cwd)
 		}
+
+		if *configPath == "" {
+			log.Fatalf("No config file provided and no cppdep.yml found in path")
+		}
+
+		if err := config.ReadFile(*configPath); err != nil {
+			log.Fatalf("Failed to read config file: %q", err)
+		}
+
 		if config.BuildDir == "" {
 			log.Fatalf("BuildDir must be set")
 		}
@@ -85,9 +109,11 @@ func main() {
 			if filepath.IsAbs(config.SrcDir) {
 				*srcDir = config.SrcDir
 			} else {
-				*srcDir = filepath.Join(*configPath, config.SrcDir)
+				*srcDir = filepath.Join(filepath.Dir(*configPath), config.SrcDir)
 			}
 		}
+
+		fmt.Printf("config: %q, srcDir: %q\n", *configPath, *srcDir)
 
 		var gens []cppdep.Generator
 		for _, gen := range config.TypeGenerators {
