@@ -18,6 +18,7 @@ type Config struct {
 	Libraries       map[string][]string
 	SourceLibs      map[string][]string
 	Flags           []string
+	SrcDir          string
 	BuildDir        string
 	TypeGenerators  []TypeGeneratorConfig
 	ShellGenerators []ShellGeneratorConfig
@@ -53,13 +54,13 @@ func (c *Config) ReadFile(path string) error {
 
 func main() {
 	cmd := cli.App("cppdep", "dependency graph and easy compiles")
-	cmd.Spec = "[OPTIONS] SRCDIR [BINARY_NAME]"
+	cmd.Spec = "[OPTIONS] [BINARY_NAME]"
 	configPath := cmd.StringOpt("config", "", "path to yaml config")
 	concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
 	fast := cmd.BoolOpt("fast", false, "Set to enable fast file scanning")
 	regex := cmd.BoolOpt("regex", false, "Treat binaryName as a path regex")
 	list := cmd.BoolOpt("list", false, "Lists paths of all binaries that would be generated, but does not compile them")
-	srcDir := cmd.StringArg("SRCDIR", "./", "")
+	srcDir := cmd.StringOpt("src", "", "path to the src directory")
 	binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc")
 
 	cmd.Action = func() {
@@ -76,6 +77,16 @@ func main() {
 		err := os.MkdirAll(config.BuildDir, 0755)
 		if err != nil {
 			log.Fatalf("Failed to create build dir: %s (%v)", config.BuildDir, err)
+		}
+
+		if *srcDir == "" && config.SrcDir == "" {
+			log.Fatalf("a source directory must be set through --src or config.srcdir")
+		} else if *srcDir == "" {
+			if filepath.IsAbs(config.SrcDir) {
+				*srcDir = config.SrcDir
+			} else {
+				*srcDir = filepath.Join(*configPath, config.SrcDir)
+			}
 		}
 
 		var gens []cppdep.Generator
