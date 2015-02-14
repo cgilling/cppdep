@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -68,15 +69,19 @@ func TestSimpleCompile(t *testing.T) {
 	makeBinaryHook = func(file *File) {
 		binCount++
 	}
+	defer func() {
+		makeBinaryHook = nil
+		makeObjectHook = nil
+	}()
 
 	_, err = c.Compile(mainFile)
 	switch {
 	case err != nil:
 		t.Fatalf("Second compile failed: %v", err)
 	case objCount != 0:
-		t.Errorf("Expected no object files to be built")
+		t.Errorf("Expected no object files to be built: %d", objCount)
 	case binCount != 0:
-		t.Errorf("Expected no binary to be built")
+		t.Errorf("Expected no binary to be built: %d", binCount)
 	}
 
 	objCount = 0
@@ -89,9 +94,19 @@ func TestSimpleCompile(t *testing.T) {
 			break
 		}
 	}
+
+	// NOTE: unfortunately OS X timestamps only have 1 second resolution
+	if runtime.GOOS == "darwin" {
+		if testing.Short() {
+			t.Skip("Skipping rest of the test because we need to sleep for a second on OS X")
+		}
+		time.Sleep(time.Second)
+	}
 	origModTime := ah.ModTime
 	ah.ModTime = time.Now()
-	os.Chtimes(ah.Path, ah.ModTime, ah.ModTime)
+	if err := os.Chtimes(ah.Path, ah.ModTime, ah.ModTime); err != nil {
+		t.Fatalf("Failed to modify times for %q", ah.Path)
+	}
 
 	_, err = c.Compile(mainFile)
 	switch {
@@ -103,13 +118,18 @@ func TestSimpleCompile(t *testing.T) {
 		t.Errorf("Expected a binary to be built")
 	}
 
+	if runtime.GOOS == "darwin" {
+		time.Sleep(time.Second)
+	}
 	ah.ModTime = origModTime
 	os.Chtimes(ah.Path, ah.ModTime, ah.ModTime)
 	objCount = 0
 	binCount = 0
 
 	mainFile.ModTime = time.Now()
-	os.Chtimes(mainFile.Path, mainFile.ModTime, mainFile.ModTime)
+	if err := os.Chtimes(mainFile.Path, mainFile.ModTime, mainFile.ModTime); err != nil {
+		t.Fatalf("Failed to modify fimes for %q", mainFile.Path)
+	}
 
 	_, err = c.Compile(mainFile)
 	switch {
@@ -309,6 +329,10 @@ func TestCompileAllGeneratesObjectFilesOnce(t *testing.T) {
 	makeBinaryHook = func(file *File) {
 		binCount++
 	}
+	defer func() {
+		makeBinaryHook = nil
+		makeObjectHook = nil
+	}()
 
 	_, err = c.CompileAll(files)
 	switch {
