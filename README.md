@@ -1,4 +1,6 @@
 # cppdep
+[![Build Status](https://travis-ci.org/cgilling/cppdep.svg?branch=master)](https://travis-ci.org/cgilling/cppdep)
+
 Playing Around With C++ Dependencies and simple naive compilation
 
 ## Warning
@@ -32,7 +34,4 @@ TODO
 
 ## TODO
 * option to automaticly include all directories in source tree in the include search path
-* automatic config discovery searching for a cppdep.yml file in a directory in the current path
-* remove need to `build` keyword in cli
 * ability to print a list of dependencies rather than compile
-* ability to print a list of binaries that would be compiled rather than actually compile
