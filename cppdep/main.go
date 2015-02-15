@@ -13,6 +13,7 @@ import (
 )
 
 type Config struct {
+	AutoInclude     bool
 	Includes        []string
 	Excludes        []string
 	Libraries       map[string][]string
@@ -147,6 +148,7 @@ func main() {
 
 		st := &cppdep.SourceTree{
 			SrcRoot:         *srcDir,
+			AutoInclude:     config.AutoInclude,
 			IncludeDirs:     config.Includes,
 			ExcludeDirs:     config.Excludes,
 			Libraries:       config.Libraries,
@@ -166,7 +168,7 @@ func main() {
 
 		c := &cppdep.Compiler{
 			OutputDir:   config.BuildDir,
-			IncludeDirs: append(config.Includes, st.GenDir()),
+			IncludeDirs: st.IncludeDirs,
 			Flags:       config.Flags,
 			Concurrency: *concurrency,
 		}

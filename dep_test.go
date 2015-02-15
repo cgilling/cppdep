@@ -243,6 +243,30 @@ func TestRename(t *testing.T) {
 	}
 }
 
+func TestAutoInclude(t *testing.T) {
+	st := SourceTree{
+		SrcRoot:     "test_files/auto_include",
+		ExcludeDirs: []string{"dirb"},
+		AutoInclude: true,
+	}
+	st.ProcessDirectory()
+	var foundA, foundB bool
+	dira, dirb := filepath.Join(st.SrcRoot, "dira"), filepath.Join(st.SrcRoot, "dirb")
+	for _, inc := range st.IncludeDirs {
+		if inc == dira {
+			foundA = true
+		} else if inc == dirb {
+			foundB = true
+		}
+	}
+	if !foundA {
+		t.Errorf("dira was not found in the include path")
+	}
+	if foundB {
+		t.Errorf("dirb was found in the include path")
+	}
+}
+
 func TestMultiRename(t *testing.T) {
 	st := SourceTree{
 		SrcRoot: "test_files/simple",

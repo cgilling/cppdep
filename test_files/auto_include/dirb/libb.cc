@@ -1,0 +1,4 @@
+
+int funcb() {
+  return 'b';
+}

@@ -1,0 +1,4 @@
+
+int funca() {
+  return 'a';
+}

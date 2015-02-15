@@ -50,6 +50,11 @@ type SourceTree struct {
 	// than the standard one. See the documention for Scanner for more information.
 	UseFastScanning bool
 
+	// AutoInclude will automatically add all directories found while scanning the source
+	// tree to IncludeDirs. Directories found in ExcludeDirs and all sub directories will
+	// be excluded.
+	AutoInclude bool
+
 	mu      sync.Mutex
 	sources []*File
 }
@@ -154,6 +159,9 @@ func (st *SourceTree) ProcessDirectory() error {
 					return filepath.SkipDir
 				}
 			}
+			if st.AutoInclude {
+				st.IncludeDirs = append(st.IncludeDirs, path)
+			}
 			return nil
 		}
 
@@ -206,6 +214,7 @@ func (st *SourceTree) ProcessDirectory() error {
 	if err := os.MkdirAll(genDir, 0755); err != nil {
 		return err
 	}
+	st.IncludeDirs = append(st.IncludeDirs, genDir)
 	for _, genFile := range genFiles {
 		outModTime := time.Now()
 		outputPaths := genFile.gen.OutputPaths(genFile.path, genDir)
@@ -275,7 +284,7 @@ func (st *SourceTree) ProcessDirectory() error {
 			}
 		}
 
-		searchPath := []string{filepath.Dir(file.Path), genDir}
+		searchPath := []string{filepath.Dir(file.Path)}
 		searchPath = append(searchPath, st.IncludeDirs...)
 
 		for scan.Scan() {
