@@ -28,7 +28,7 @@ func TestSimpleCompile(t *testing.T) {
 	}
 	st.ProcessDirectory()
 
-	mainFile := st.FindSource("main.cc")
+	mainFile := st.FindSource("main")
 
 	c := &Compiler{OutputDir: outputDir}
 
@@ -155,7 +155,7 @@ func TestCompileSourceLib(t *testing.T) {
 	}
 	st.ProcessDirectory()
 
-	mainFile := st.FindSource("main.cc")
+	mainFile := st.FindSource("main")
 
 	c := &Compiler{OutputDir: outputDir}
 	_, err = c.Compile(mainFile)
@@ -178,7 +178,7 @@ func TestSystemLibraryCompile(t *testing.T) {
 	}
 	st.ProcessDirectory()
 
-	mainFile := st.FindSource("gzcat.cc")
+	mainFile := st.FindSource("gzcat")
 
 	c := &Compiler{OutputDir: outputDir}
 
@@ -212,7 +212,7 @@ func TestCompileFlags(t *testing.T) {
 	}
 	st.ProcessDirectory()
 
-	mainFile := st.FindSource("main.cc")
+	mainFile := st.FindSource("main")
 
 	c := &Compiler{
 		Flags:     []string{"-Wsign-compare", "-Werror"},
@@ -249,7 +249,7 @@ func TestCompileUsingTypeGenerator(t *testing.T) {
 		BuildDir:   outputDir,
 	}
 	st.ProcessDirectory()
-	mainFile := st.FindSource("main.cc")
+	mainFile := st.FindSource("main")
 	if mainFile == nil {
 		t.Fatalf("Unable to find main file")
 	}
@@ -290,7 +290,7 @@ func TestCompileUsingShellGenerator(t *testing.T) {
 		BuildDir:   outputDir,
 	}
 	st.ProcessDirectory()
-	mainFile := st.FindSource("main.cc")
+	mainFile := st.FindSource("main")
 	if mainFile == nil {
 		t.Fatalf("Unable to find main file")
 	}
@@ -317,7 +317,7 @@ func TestCompileAllGeneratesObjectFilesOnce(t *testing.T) {
 	}
 	st.ProcessDirectory()
 
-	files := []*File{st.FindSource("main.cc"), st.FindSource("mainb.cc")}
+	files := []*File{st.FindSource("main"), st.FindSource("mainb")}
 
 	c := &Compiler{OutputDir: outputDir}
 
@@ -343,4 +343,31 @@ func TestCompileAllGeneratesObjectFilesOnce(t *testing.T) {
 	case binCount != 2:
 		t.Errorf("Expected 2 binary files to be built, actually %d were built", binCount)
 	}
+}
+
+func TestCompileRenamedBinaries(t *testing.T) {
+	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
+	if err != nil {
+		t.Fatalf("Failed to setup output dir")
+	}
+	defer os.RemoveAll(outputDir)
+
+	st := SourceTree{
+		SrcRoot: "test_files/simple",
+	}
+	st.ProcessDirectory()
+
+	mainFile := st.FindSource("main")
+	mainFile.BinaryName = "change_bin_name"
+
+	c := &Compiler{OutputDir: outputDir}
+
+	binaryPath, err := c.Compile(mainFile)
+	switch {
+	case err != nil:
+		t.Errorf("Compile failed: %v", err)
+	case binaryPath != filepath.Join(outputDir, "change_bin_name"):
+		t.Errorf("Output filename was not change: %q", binaryPath)
+	}
+
 }

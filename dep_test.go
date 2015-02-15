@@ -24,8 +24,8 @@ func TestDepSimple(t *testing.T) {
 	}
 	st.ProcessDirectory()
 
-	mainFile := st.FindSource("main.cc")
-	aFile := st.FindSource("a.cc")
+	mainFile := st.FindSource("main")
+	aFile := st.FindSource("a")
 
 	switch {
 	case mainFile == nil:
@@ -52,11 +52,11 @@ func TestExcludeDirs(t *testing.T) {
 	}
 	st.ProcessDirectory()
 
-	mainb := st.FindSource("mainb.cc")
+	mainb := st.FindSource("mainb")
 	if mainb != nil {
 		t.Errorf("Failed to exclude directory")
 	}
-	main := st.FindSource("main.cc")
+	main := st.FindSource("main")
 	if main == nil {
 		t.Errorf("Failed find file in non excluded directory")
 	}
@@ -69,7 +69,7 @@ func TestSourceLib(t *testing.T) {
 	}
 	st.ProcessDirectory()
 
-	mainFile := st.FindSource("main.cc")
+	mainFile := st.FindSource("main")
 	hFile := mainFile.DepList()[0]
 	switch {
 	case len(hFile.ImplFiles) != 2:
@@ -83,7 +83,7 @@ func TestDepSystemLibrary(t *testing.T) {
 		Libraries: map[string][]string{"zlib.h": {"-lz"}},
 	}
 	st.ProcessDirectory()
-	mainFile := st.FindSource("gzcat.cc")
+	mainFile := st.FindSource("gzcat")
 	if !reflect.DeepEqual(mainFile.Libs, []string{"-lz"}) {
 		t.Errorf("Expected gzcat Libs to be -lz, actually: %v", mainFile.Libs)
 	}
@@ -95,7 +95,7 @@ func TestUsingFastScanningOption(t *testing.T) {
 		UseFastScanning: true,
 	}
 	st.ProcessDirectory()
-	mainFile := st.FindSource("main.cc")
+	mainFile := st.FindSource("main")
 	if len(mainFile.Deps) != 0 {
 		t.Errorf("Picked up an deps that weren't expected: %v", mainFile.Deps)
 	}
@@ -124,7 +124,7 @@ func TestUsingTypeGenerator(t *testing.T) {
 		BuildDir:   outputDir,
 	}
 	st.ProcessDirectory()
-	mainFile := st.FindSource("main.cc")
+	mainFile := st.FindSource("main")
 	if mainFile == nil {
 		t.Errorf("Unable to find main file")
 	}
@@ -156,7 +156,7 @@ func TestFindSources(t *testing.T) {
 	}
 	st.ProcessDirectory()
 
-	sources, err := st.FindSources(`source_lib/lib.*\.cc`)
+	sources, err := st.FindSources(`source_lib/lib.*`)
 	switch {
 	case err != nil:
 		t.Errorf("FindSources returned error: %v", err)
@@ -167,6 +167,14 @@ func TestFindSources(t *testing.T) {
 	_, err = st.FindSources(`\x1`)
 	if err == nil {
 		t.Errorf("Expected FindSources to fail when given a bad regex")
+	}
+
+	sources, err = st.FindSources(`source_lib/lib`)
+	switch {
+	case err != nil:
+		t.Errorf("Error on find sources #3: %v", err)
+	case len(sources) != 0:
+		t.Errorf("Expected not to fine any sources for partial match, found %d", len(sources))
 	}
 }
 
@@ -202,6 +210,61 @@ func TestFindMainFiles(t *testing.T) {
 	// TODO: need to test looking for main statements in files that seem like they
 	// would be main files, as they could just be orphaned .cc files. (code not
 	// implemented yet either)
+}
+
+func TestRename(t *testing.T) {
+	st := SourceTree{
+		SrcRoot: "test_files/simple",
+	}
+	st.ProcessDirectory()
+
+	rules := []RenameRule{
+		{Regex: `(main)b`, Replace: `thebest$1`},
+	}
+	if err := st.Rename(rules); err != nil {
+		t.Fatalf("Rename failed: %v", err)
+	}
+
+	theBest := st.FindSource("thebestmain")
+	main := st.FindSource("main")
+	switch {
+	case theBest == nil:
+		t.Errorf("Unable to find renamed source")
+	case main == nil:
+		t.Errorf("Unable to find non renamed source")
+	}
+
+	files, err := st.FindSources("thebest.*")
+	switch {
+	case err != nil:
+		t.Errorf("FindSources returned error: %v", err)
+	case len(files) != 1:
+		t.Errorf("Exected FindSources to return 1 file: %d", len(files))
+	}
+}
+
+func TestMultiRename(t *testing.T) {
+	st := SourceTree{
+		SrcRoot: "test_files/simple",
+	}
+	st.ProcessDirectory()
+
+	rules := []RenameRule{
+		{Regex: `ma(in)`, Replace: `complete_change`},
+		{Regex: `(main)b`, Replace: `thebest$1`},
+	}
+	if err := st.Rename(rules); err != nil {
+		t.Fatalf("Rename failed: %v", err)
+	}
+
+	main := st.FindSource("complete_change")
+	mainb := st.FindSource("thebestmain")
+	switch {
+	case main == nil:
+		t.Errorf("Failed to find file from first rule")
+	case mainb == nil:
+		t.Errorf("Failed to find file from second rule")
+	}
 }
 
 func countEntries(list []*File, target string) int {

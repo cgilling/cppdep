@@ -58,6 +58,38 @@ func (st *SourceTree) GenDir() string {
 	return filepath.Join(st.BuildDir, "gen")
 }
 
+type RenameRule struct {
+	Regex   string
+	Replace string
+}
+
+// Rename take the rules passed in and applies them to all sources found
+// during the ProcessDirectory call. The Regex must match the entire binary
+// name to be applied. If multiple rules apply to a single binary, then the
+// first one to match will apply. The default binary name is found by
+// calling filepath.Base(file.Path) and then removing the extension.
+func (st *SourceTree) Rename(rules []RenameRule) error {
+	var regexps []*regexp.Regexp
+	for _, rn := range rules {
+		reg, err := regexp.Compile(rn.Regex)
+		if err != nil {
+			return err
+		}
+		regexps = append(regexps, reg)
+	}
+	for _, file := range st.sources {
+		name := removeExt(filepath.Base(file.Path))
+		for i, reg := range regexps {
+			loc := reg.FindStringIndex(name)
+			if loc != nil && loc[0] == 0 && loc[1] == len(name) {
+				file.BinaryName = reg.ReplaceAllString(name, rules[i].Replace)
+				break
+			}
+		}
+	}
+	return nil
+}
+
 // setup ensures needed paths are absolute, and sets up default values
 func (st *SourceTree) setup() error {
 	if st.SrcRoot == "" {
@@ -288,15 +320,30 @@ func (st *SourceTree) ProcessDirectory() error {
 	return nil
 }
 
+func removeExt(path string) string {
+	extPos := strings.LastIndex(path, ".")
+	if extPos == -1 {
+		return path
+	}
+	return path[:extPos]
+}
+
 func (st *SourceTree) FindSource(name string) *File {
 	for _, file := range st.sources {
-		if filepath.Base(file.Path) == name {
+		bn := file.BinaryName
+		if bn == "" {
+			bn = filepath.Base(removeExt(file.Path))
+		}
+		if bn == name {
 			return file
 		}
 	}
 	return nil
 }
 
+// TODO: currently find sources needs to include the subdir also. Change so that if the regex
+// does not have a '/' in it, then just match on binary name. Also should change to using
+// filepath.Match rather than regexp. I think it would be more natural.
 func (st *SourceTree) FindSources(regex string) ([]*File, error) {
 	var sources []*File
 	r, err := regexp.Compile(filepath.Join(st.SrcRoot, regex))
@@ -304,7 +351,14 @@ func (st *SourceTree) FindSources(regex string) ([]*File, error) {
 		return nil, err
 	}
 	for _, file := range st.sources {
-		if r.MatchString(file.Path) {
+		var bn string
+		if file.BinaryName == "" {
+			bn = removeExt(file.Path)
+		} else {
+			bn = filepath.Join(filepath.Dir(file.Path), file.BinaryName)
+		}
+		loc := r.FindStringIndex(bn)
+		if loc != nil && loc[0] == 0 && loc[1] == len(bn) {
 			sources = append(sources, file)
 		}
 	}
@@ -354,12 +408,13 @@ func (st *SourceTree) FindMainFiles() ([]*File, error) {
 }
 
 type File struct {
-	Path      string
-	Deps      []*File
-	Type      int
-	ImplFiles []*File // the list of files that implement the functionality defined in this file
-	Libs      []string
-	ModTime   time.Time
+	Path       string
+	Deps       []*File
+	Type       int
+	ImplFiles  []*File // the list of files that implement the functionality defined in this file
+	Libs       []string
+	ModTime    time.Time
+	BinaryName string
 
 	// stMu used to ensure that only one goroutine is traversing the dependency
 	// tree at any one time.

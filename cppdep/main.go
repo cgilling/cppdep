@@ -18,6 +18,7 @@ type Config struct {
 	Libraries       map[string][]string
 	SourceLibs      map[string][]string
 	Flags           []string
+	Binary          BinaryConfig
 	SrcDir          string
 	BuildDir        string
 	TypeGenerators  []TypeGeneratorConfig
@@ -34,6 +35,10 @@ type ShellGeneratorConfig struct {
 	InputPaths  []string
 	OutputFiles []string
 	Path        string
+}
+
+type BinaryConfig struct {
+	Rename []cppdep.RenameRule
 }
 
 func (c *Config) ReadFile(path string) error {
@@ -155,6 +160,10 @@ func main() {
 			log.Fatalf("Failed to process source directory: %s (%v)", *srcDir, err)
 		}
 
+		if err := st.Rename(config.Binary.Rename); err != nil {
+			log.Fatalf("Failed to rename files: %v", err)
+		}
+
 		c := &cppdep.Compiler{
 			OutputDir:   config.BuildDir,
 			IncludeDirs: append(config.Includes, st.GenDir()),
@@ -168,12 +177,12 @@ func main() {
 				log.Fatalf("failes to automatically find main files: %v", err)
 			}
 		} else if *regex {
-			files, err = st.FindSources(*binaryName + ".cc")
+			files, err = st.FindSources(*binaryName)
 			if err != nil {
 				log.Fatalf("invalid regex: %q", *binaryName)
 			}
 		} else {
-			mainFile := st.FindSource(*binaryName + ".cc")
+			mainFile := st.FindSource(*binaryName)
 			if mainFile == nil {
 				log.Fatalf("Unable to find source for %q", *binaryName)
 			}
