@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -240,6 +241,34 @@ func TestRename(t *testing.T) {
 		t.Errorf("FindSources returned error: %v", err)
 	case len(files) != 1:
 		t.Errorf("Exected FindSources to return 1 file: %d", len(files))
+	}
+}
+
+func TestRenameNameCollision(t *testing.T) {
+	st := SourceTree{
+		SrcRoot: "test_files/simple",
+	}
+	st.ProcessDirectory()
+
+	rules := []RenameRule{
+		{Regex: `(main)b`, Replace: `$1`},
+	}
+	st.Rename(rules)
+
+	file := st.FindSource("main")
+	switch {
+	case file == nil:
+		t.Errorf("could not file file for main")
+	case !strings.HasSuffix(file.Path, "mainb.cc"):
+		t.Errorf("Expected to find mainb.cc instead found: %q", filepath.Base(file.Path))
+	}
+
+	files, err := st.FindSources("mai.*")
+	switch {
+	case err != nil:
+		t.Errorf("FindSouces returned error: %v", err)
+	case len(files) != 1:
+		t.Errorf("Expected to only find 1 source, found %d", len(files))
 	}
 }
 

@@ -337,13 +337,16 @@ func removeExt(path string) string {
 	return path[:extPos]
 }
 
+// NOTE: for FindSource and FindSources, with name collisions
+
 func (st *SourceTree) FindSource(name string) *File {
 	for _, file := range st.sources {
-		bn := file.BinaryName
-		if bn == "" {
-			bn = filepath.Base(removeExt(file.Path))
+		if file.BinaryName == name {
+			return file
 		}
-		if bn == name {
+	}
+	for _, file := range st.sources {
+		if filepath.Base(removeExt(file.Path)) == name {
 			return file
 		}
 	}
@@ -354,22 +357,42 @@ func (st *SourceTree) FindSource(name string) *File {
 // does not have a '/' in it, then just match on binary name. Also should change to using
 // filepath.Match rather than regexp. I think it would be more natural.
 func (st *SourceTree) FindSources(regex string) ([]*File, error) {
+	foundNames := make(map[string]struct{})
 	var sources []*File
 	r, err := regexp.Compile(filepath.Join(st.SrcRoot, regex))
 	if err != nil {
 		return nil, err
 	}
-	for _, file := range st.sources {
+
+	add_file := func(file *File) {
 		var bn string
-		if file.BinaryName == "" {
-			bn = removeExt(file.Path)
-		} else {
+		if file.BinaryName != "" {
 			bn = filepath.Join(filepath.Dir(file.Path), file.BinaryName)
+		} else {
+			bn = removeExt(file.Path)
+		}
+		base := filepath.Base(bn)
+		if _, found := foundNames[base]; found {
+			return
 		}
 		loc := r.FindStringIndex(bn)
 		if loc != nil && loc[0] == 0 && loc[1] == len(bn) {
+			foundNames[base] = struct{}{}
 			sources = append(sources, file)
 		}
+	}
+
+	for _, file := range st.sources {
+		if file.BinaryName == "" {
+			continue
+		}
+		add_file(file)
+	}
+	for _, file := range st.sources {
+		if file.BinaryName != "" {
+			continue
+		}
+		add_file(file)
 	}
 	return sources, nil
 }
