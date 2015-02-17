@@ -34,5 +34,4 @@ TODO
 * All includes of files within the source tree use double quotes rather that angle brackets
 
 ## TODO
-* option to automaticly include all directories in source tree in the include search path
 * ability to print a list of dependencies rather than compile
