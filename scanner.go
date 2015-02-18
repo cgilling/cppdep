@@ -12,14 +12,8 @@ const (
 	BracketIncludeType
 )
 
-// Scanner is used to scan source files to look for include statements
-type Scanner struct {
-	scan  *bufio.Scanner
-	regex *regexp.Regexp
-	text  string
-	typ   int
-
-	fastMode          bool
+var (
+	includeRegex      *regexp.Regexp
 	commentRegex      *regexp.Regexp
 	whitespaceRegex   *regexp.Regexp
 	precompRegex      *regexp.Regexp
@@ -27,17 +21,48 @@ type Scanner struct {
 	multiPrecompCont  *regexp.Regexp
 	multiCommentStart *regexp.Regexp
 	multiCommentEnd   *regexp.Regexp
+)
+
+func init() {
+	var err error
+	if includeRegex, err = regexp.Compile(`\s*#include\s+["<]([^"<]*)([">])\s*`); err != nil {
+		panic(fmt.Sprintf("Regexp.Compile threw and error: %q", err))
+	}
+	if commentRegex, err = regexp.Compile(`^\s*//.*$`); err != nil {
+		panic(fmt.Sprintf("Regexp.Compile threw and error: %q", err))
+	}
+	if whitespaceRegex, err = regexp.Compile(`^\s*$`); err != nil {
+		panic(fmt.Sprintf("Regexp.Compile threw and error: %q", err))
+	}
+	if precompRegex, err = regexp.Compile(`^\s*#.*$`); err != nil {
+		panic(fmt.Sprintf("Regexp.Compile threw and error: %q", err))
+	}
+	if multiPrecompStart, err = regexp.Compile(`^\s*#.*\\$`); err != nil {
+		panic(fmt.Sprintf("Regexp.Compile threw and error: %q", err))
+	}
+	if multiPrecompCont, err = regexp.Compile(`^.*\\$`); err != nil {
+		panic(fmt.Sprintf("Regexp.Compile threw and error: %q", err))
+	}
+	if multiCommentStart, err = regexp.Compile(`^\s*/\*.*$`); err != nil {
+		panic(fmt.Sprintf("Regexp.Compile threw and error: %q", err))
+	}
+	if multiCommentEnd, err = regexp.Compile(`^.*\*/\s*$`); err != nil {
+		panic(fmt.Sprintf("Regexp.Compile threw and error: %q", err))
+	}
+}
+
+// Scanner is used to scan source files to look for include statements
+type Scanner struct {
+	scan *bufio.Scanner
+	text string
+	typ  int
+
+	fastMode bool
 }
 
 func NewScanner(r io.Reader) *Scanner {
-	reg, err := regexp.Compile(`\s*#include\s+["<]([^"<]*)([">])\s*`)
-	if err != nil {
-		panic(fmt.Sprintf("NewScanner Regexp.Compile threw and error: %q", err))
-	}
-
 	return &Scanner{
-		scan:  bufio.NewScanner(r),
-		regex: reg,
+		scan: bufio.NewScanner(r),
 	}
 }
 
@@ -45,30 +70,8 @@ func NewScanner(r io.Reader) *Scanner {
 // includes will only occur at the top of the file in which other precompiler statements
 // and comments are allowed but nothing else.
 func NewFastScanner(r io.Reader) *Scanner {
-	var err error
 	s := NewScanner(r)
 	s.fastMode = true
-	if s.commentRegex, err = regexp.Compile(`^\s*//.*$`); err != nil {
-		panic(fmt.Sprintf("NewFastScanner Regexp.Compile threw and error: %q", err))
-	}
-	if s.whitespaceRegex, err = regexp.Compile(`^\s*$`); err != nil {
-		panic(fmt.Sprintf("NewFastScanner Regexp.Compile threw and error: %q", err))
-	}
-	if s.precompRegex, err = regexp.Compile(`^\s*#.*$`); err != nil {
-		panic(fmt.Sprintf("NewFastScanner Regexp.Compile threw and error: %q", err))
-	}
-	if s.multiPrecompStart, err = regexp.Compile(`^\s*#.*\\$`); err != nil {
-		panic(fmt.Sprintf("NewFastScanner Regexp.Compile threw and error: %q", err))
-	}
-	if s.multiPrecompCont, err = regexp.Compile(`^.*\\$`); err != nil {
-		panic(fmt.Sprintf("NewFastScanner Regexp.Compile threw and error: %q", err))
-	}
-	if s.multiCommentStart, err = regexp.Compile(`^\s*/\*.*$`); err != nil {
-		panic(fmt.Sprintf("NewFastScanner Regexp.Compile threw and error: %q", err))
-	}
-	if s.multiCommentEnd, err = regexp.Compile(`^.*\*/\s*$`); err != nil {
-		panic(fmt.Sprintf("NewFastScanner Regexp.Compile threw and error: %q", err))
-	}
 	return s
 }
 
@@ -89,14 +92,14 @@ func (s *Scanner) fastScan() bool {
 			return false
 		}
 
-		if inMultiComment && !s.multiCommentEnd.MatchString(s.scan.Text()) {
+		if inMultiComment && !multiCommentEnd.MatchString(s.scan.Text()) {
 			continue
 		} else if inMultiComment {
 			inMultiComment = false
 			continue
 		}
 
-		matches := s.regex.FindStringSubmatch(s.scan.Text())
+		matches := includeRegex.FindStringSubmatch(s.scan.Text())
 		if len(matches) >= 3 && matches[1] != "" {
 			s.text = matches[1]
 			if matches[2] == ">" {
@@ -106,16 +109,16 @@ func (s *Scanner) fastScan() bool {
 			}
 		} else {
 			switch {
-			case s.multiPrecompStart.MatchString(s.scan.Text()):
+			case multiPrecompStart.MatchString(s.scan.Text()):
 				inMultiline = true
-			case inMultiline && s.multiPrecompCont.MatchString(s.scan.Text()):
-			case s.commentRegex.MatchString(s.scan.Text()):
+			case inMultiline && multiPrecompCont.MatchString(s.scan.Text()):
+			case commentRegex.MatchString(s.scan.Text()):
 				inMultiline = false
-			case s.whitespaceRegex.MatchString(s.scan.Text()):
+			case whitespaceRegex.MatchString(s.scan.Text()):
 				inMultiline = false
-			case s.precompRegex.MatchString(s.scan.Text()):
+			case precompRegex.MatchString(s.scan.Text()):
 				inMultiline = false
-			case s.multiCommentStart.MatchString(s.scan.Text()):
+			case multiCommentStart.MatchString(s.scan.Text()):
 				inMultiComment = true
 			default:
 				if inMultiline {
@@ -136,7 +139,7 @@ func (s *Scanner) fullScan() bool {
 			return false
 		}
 
-		matches := s.regex.FindStringSubmatch(s.scan.Text())
+		matches := includeRegex.FindStringSubmatch(s.scan.Text())
 		if len(matches) >= 3 && matches[1] != "" {
 			s.text = matches[1]
 			if matches[2] == ">" {
