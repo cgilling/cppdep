@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 
 	"github.com/cgilling/cppdep"
 	cli "github.com/jawher/mow.cli"
@@ -80,10 +81,20 @@ func main() {
 	fast := cmd.BoolOpt("fast", false, "Set to enable fast file scanning")
 	regex := cmd.BoolOpt("regex", false, "Treat binaryName as a path regex")
 	list := cmd.BoolOpt("list", false, "Lists paths of all binaries that would be generated, but does not compile them")
+	cpuprofile := cmd.StringOpt("cpuprof", "", "file to write the cpu profile to")
 	srcDir := cmd.StringOpt("src", "", "path to the src directory")
 	binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc")
 
 	cmd.Action = func() {
+		if *cpuprofile != "" {
+			f, err := os.Create(*cpuprofile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pprof.StartCPUProfile(f)
+			defer pprof.StopCPUProfile()
+		}
+
 		config := &Config{}
 		if *configPath == "" {
 			cwd, err := os.Getwd()
