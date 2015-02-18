@@ -423,20 +423,40 @@ func (st *SourceTree) FindMainFiles() ([]*File, error) {
 	if err != nil {
 		return nil, err
 	}
+	var mu sync.Mutex
 	var files []*File
+	var readErr error
+	var wg sync.WaitGroup
+	fileCh := make(chan *File)
+	for i := 0; i < st.Concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for file := range fileCh {
+				fp, _ := os.Open(file.Path)
+				if err != nil {
+					mu.Lock()
+					readErr = err
+					mu.Unlock()
+					continue
+				}
+				if mainRegexp.MatchReader(bufio.NewReader(fp)) {
+					mu.Lock()
+					files = append(files, file)
+					mu.Unlock()
+				}
+				fp.Close()
+			}
+		}()
+	}
 	for _, v := range inVectors {
 		if v.count == 0 {
-			fp, err := os.Open(v.file.Path)
-			if err != nil {
-				return nil, err
-			}
-			if mainRegexp.MatchReader(bufio.NewReader(fp)) {
-				files = append(files, v.file)
-			}
-			fp.Close()
+			fileCh <- v.file
 		}
 	}
-	return files, nil
+	close(fileCh)
+	wg.Wait()
+	return files, readErr
 }
 
 type File struct {
