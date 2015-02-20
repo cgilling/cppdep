@@ -79,7 +79,7 @@ func main() {
 	configPath := cmd.StringOpt("config", "", "path to yaml config")
 	concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
 	fast := cmd.BoolOpt("fast", false, "Set to enable fast file scanning")
-	regex := cmd.BoolOpt("regex", false, "Treat binaryName as a path regex")
+	pattern := cmd.BoolOpt("pattern", false, "Treat binaryName as a path pattern")
 	list := cmd.BoolOpt("list", false, "Lists paths of all binaries that would be generated, but does not compile them")
 	cpuprofile := cmd.StringOpt("cpuprof", "", "file to write the cpu profile to")
 	srcDir := cmd.StringOpt("src", "", "path to the src directory")
@@ -189,10 +189,10 @@ func main() {
 			if err != nil {
 				log.Fatalf("failes to automatically find main files: %v", err)
 			}
-		} else if *regex {
+		} else if *pattern {
 			files, err = st.FindSources(*binaryName)
 			if err != nil {
-				log.Fatalf("invalid regex: %q", *binaryName)
+				log.Fatalf("invalid pattern: %q", *binaryName)
 			}
 		} else {
 			mainFile := st.FindSource(*binaryName)

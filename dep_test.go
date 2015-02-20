@@ -157,17 +157,12 @@ func TestFindSources(t *testing.T) {
 	}
 	st.ProcessDirectory()
 
-	sources, err := st.FindSources(`source_lib/lib.*`)
+	sources, err := st.FindSources(`source_lib/lib*`)
 	switch {
 	case err != nil:
 		t.Errorf("FindSources returned error: %v", err)
 	case len(sources) != 2:
 		t.Errorf("Expected two sources to be returned: got %d", len(sources))
-	}
-
-	_, err = st.FindSources(`\x1`)
-	if err == nil {
-		t.Errorf("Expected FindSources to fail when given a bad regex")
 	}
 
 	sources, err = st.FindSources(`source_lib/lib`)
@@ -235,7 +230,7 @@ func TestRename(t *testing.T) {
 		t.Errorf("Unable to find non renamed source")
 	}
 
-	files, err := st.FindSources("thebest.*")
+	files, err := st.FindSources("thebest*")
 	switch {
 	case err != nil:
 		t.Errorf("FindSources returned error: %v", err)
@@ -263,10 +258,10 @@ func TestRenameNameCollision(t *testing.T) {
 		t.Errorf("Expected to find mainb.cc instead found: %q", filepath.Base(file.Path))
 	}
 
-	files, err := st.FindSources("mai.*")
+	files, err := st.FindSources("mai*")
 	switch {
 	case err != nil:
-		t.Errorf("FindSouces returned error: %v", err)
+		t.Errorf("FindSources returned error: %v", err)
 	case len(files) != 1:
 		t.Errorf("Expected to only find 1 source, found %d", len(files))
 	}
