@@ -74,14 +74,19 @@ func searchForConfigFile(dir string) string {
 
 func main() {
 	cmd := cli.App("cppdep", "dependency graph and easy compiles")
-	cmd.Spec = "[OPTIONS] [BINARY_NAME]"
+	cmd.Spec = "[OPTIONS] [BINARY_NAMES]..."
 	configPath := cmd.StringOpt("config", "", "path to yaml config")
 	concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
 	fast := cmd.BoolOpt("fast", false, "Set to enable fast file scanning")
 	list := cmd.BoolOpt("list", false, "Lists paths of all binaries that would be generated, but does not compile them")
 	cpuprofile := cmd.StringOpt("cpuprof", "", "file to write the cpu profile to")
 	srcDir := cmd.StringOpt("src", "", "path to the src directory")
-	binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc, this can be a globbing expression as well")
+	binaryNames := cmd.StringsArg(
+		"BINARY_NAMES",
+		nil,
+		"name of the binary to build, main source file should be BINARY_NAME.cc, this can be a globbing expression as well."+
+			" A '*' on its own means 'all autodetected main source files'",
+	)
 
 	cmd.Action = func() {
 		if *cpuprofile != "" {
@@ -180,15 +185,22 @@ func main() {
 			Concurrency: *concurrency,
 		}
 		var files []*cppdep.File
-		if *binaryName == "" {
-			files, err = st.FindMainFiles()
-			if err != nil {
-				log.Fatalf("failes to automatically find main files: %v", err)
-			}
-		} else {
-			files, err = st.FindSources(*binaryName)
-			if err != nil {
-				log.Fatalf("invalid pattern: %q", *binaryName)
+		if *binaryNames == nil {
+			*binaryNames = []string{"*"}
+		}
+
+		for _, binaryName := range *binaryNames {
+			if binaryName == "*" {
+				files, err = st.FindMainFiles()
+				if err != nil {
+					log.Fatalf("failes to automatically find main files: %v", err)
+				}
+			} else {
+				f, err := st.FindSources(binaryName)
+				if err != nil {
+					log.Fatalf("invalid pattern: %q", binaryName)
+				}
+				files = append(files, f...)
 			}
 		}
 
