@@ -351,16 +351,22 @@ func (st *SourceTree) FindSource(name string) *File {
 	return nil
 }
 
-// TODO: currently find sources needs to include the subdir also. Change so that if the regex
-// does not have a '/' in it, then just match on binary name. Also should change to using
-// filepath.Match rather than regexp. I think it would be more natural.
+// FindSources uses a file globbing patters (as defined by filepath.Match) and finds
+// all sources files that match that pattern. If pattern does not contain a file
+// separator character, then jus the binary name is matched against. If it contains
+// a file separator, then it is assumed to be relative to the root of the source
+// tree.
 func (st *SourceTree) FindSources(pattern string) ([]*File, error) {
 	foundNames := make(map[string]struct{})
 	var sources []*File
 
-	fullPathPattern := filepath.Join(st.SrcRoot, pattern)
+	useFullPath := false
+	if strings.Index(pattern, string(filepath.Separator)) != -1 {
+		useFullPath = true
+		pattern = filepath.Join(st.SrcRoot, pattern)
+	}
 
-	if _, err := filepath.Match(fullPathPattern, "testthis"); err != nil {
+	if _, err := filepath.Match(pattern, "testthis"); err != nil {
 		return nil, err
 	}
 
@@ -375,7 +381,10 @@ func (st *SourceTree) FindSources(pattern string) ([]*File, error) {
 		if _, found := foundNames[base]; found {
 			return
 		}
-		if matched, _ := filepath.Match(fullPathPattern, bn); matched {
+		if !useFullPath {
+			bn = base
+		}
+		if matched, _ := filepath.Match(pattern, bn); matched {
 			foundNames[base] = struct{}{}
 			sources = append(sources, file)
 		}

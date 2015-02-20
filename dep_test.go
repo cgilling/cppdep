@@ -168,9 +168,19 @@ func TestFindSources(t *testing.T) {
 	sources, err = st.FindSources(`source_lib/lib`)
 	switch {
 	case err != nil:
-		t.Errorf("Error on find sources #3: %v", err)
+		t.Errorf("Error on find sources #2: %v", err)
 	case len(sources) != 0:
 		t.Errorf("Expected not to fine any sources for partial match, found %d", len(sources))
+	}
+
+	sources, err = st.FindSources("libb")
+	switch {
+	case err != nil:
+		t.Errorf("Error on find sources #3: %v", err)
+	case len(sources) != 1:
+		t.Errorf("Expected to find 1 source, found %d", len(sources))
+	case filepath.Base(removeExt(sources[0].Path)) != "libb":
+		t.Errorf("Expected to find libb.cc, found: %q", sources[0].Path)
 	}
 }
 

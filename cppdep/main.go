@@ -79,11 +79,10 @@ func main() {
 	configPath := cmd.StringOpt("config", "", "path to yaml config")
 	concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
 	fast := cmd.BoolOpt("fast", false, "Set to enable fast file scanning")
-	pattern := cmd.BoolOpt("pattern", false, "Treat binaryName as a path pattern")
 	list := cmd.BoolOpt("list", false, "Lists paths of all binaries that would be generated, but does not compile them")
 	cpuprofile := cmd.StringOpt("cpuprof", "", "file to write the cpu profile to")
 	srcDir := cmd.StringOpt("src", "", "path to the src directory")
-	binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc")
+	binaryName := cmd.StringArg("BINARY_NAME", "", "name of the binary to build, main source file should be BINARY_NAME.cc, this can be a globbing expression as well")
 
 	cmd.Action = func() {
 		if *cpuprofile != "" {
@@ -189,17 +188,11 @@ func main() {
 			if err != nil {
 				log.Fatalf("failes to automatically find main files: %v", err)
 			}
-		} else if *pattern {
+		} else {
 			files, err = st.FindSources(*binaryName)
 			if err != nil {
 				log.Fatalf("invalid pattern: %q", *binaryName)
 			}
-		} else {
-			mainFile := st.FindSource(*binaryName)
-			if mainFile == nil {
-				log.Fatalf("Unable to find source for %q", *binaryName)
-			}
-			files = append(files, mainFile)
 		}
 
 		if *list {
