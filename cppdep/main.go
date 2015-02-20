@@ -63,7 +63,6 @@ func searchForConfigFile(dir string) string {
 	var path string
 	for dir != "/" && path == "" {
 		testpath := filepath.Join(dir, "cppdep.yml")
-		fmt.Println(testpath)
 		if _, err := os.Stat(testpath); err == nil {
 			path = testpath
 			break
@@ -133,8 +132,6 @@ func main() {
 				*srcDir = filepath.Join(filepath.Dir(*configPath), config.SrcDir)
 			}
 		}
-
-		fmt.Printf("config: %q, srcDir: %q\n", *configPath, *srcDir)
 
 		var gens []cppdep.Generator
 		for _, gen := range config.TypeGenerators {
