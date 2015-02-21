@@ -209,7 +209,9 @@ func main() {
 				fmt.Println(c.BinPath(file))
 			}
 		} else {
-			c.CompileAll(files)
+			if _, err := c.CompileAll(files); err != nil {
+				log.Fatalf("Compile Returned with: %v", err)
+			}
 		}
 	}
 
