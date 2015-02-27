@@ -1,5 +1,6 @@
 #include "alib.h"
 
+#include <stdio.h>
 #include <zlib.h>
 
 std::string gunzipPath(const char* filepath) {
