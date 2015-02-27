@@ -30,7 +30,7 @@ func (c *Compiler) BinPath(file *File) string {
 	}
 	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")
-	return filepath.Join(c.OutputDir, base[:dotIndex])
+	return filepath.Join(c.OutputDir, "bin", base[:dotIndex])
 }
 
 // CompileAll will compile binaries whose main functions are defined by the entries
@@ -38,6 +38,12 @@ func (c *Compiler) BinPath(file *File) string {
 // return false. Upon success the path of all the output binaries are returned in
 // the same order as the input files.
 func (c *Compiler) CompileAll(files []*File) (paths []string, err error) {
+	if err := os.MkdirAll(filepath.Join(c.OutputDir, "bin"), 0755); err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Join(c.OutputDir, "obj"), 0755); err != nil {
+		return nil, err
+	}
 	uniqueSources := make(map[string]*File)
 	var fileSources [][]*File
 	var fileLibs [][]string
@@ -175,7 +181,7 @@ var (
 func (c *Compiler) objectPath(file *File) string {
 	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")
-	return filepath.Join(c.OutputDir, base[:dotIndex]+".o")
+	return filepath.Join(c.OutputDir, "obj", base[:dotIndex]+".o")
 }
 
 func (c *Compiler) makeObject(file *File) (path string, err error) {

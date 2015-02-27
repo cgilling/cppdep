@@ -37,15 +37,15 @@ func TestSimpleCompile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Compile returned error: %v", err)
 	}
-	_, err = os.Stat(filepath.Join(outputDir, "main.o"))
+	_, err = os.Stat(filepath.Join(outputDir, "obj/main.o"))
 	if err != nil {
 		t.Errorf("main.o file was not created in output directory")
 	}
-	_, err = os.Stat(filepath.Join(outputDir, "a.o"))
+	_, err = os.Stat(filepath.Join(outputDir, "obj/a.o"))
 	if err != nil {
 		t.Errorf("a.o file was not created in output directory")
 	}
-	_, err = os.Stat(filepath.Join(outputDir, "main"))
+	_, err = os.Stat(filepath.Join(outputDir, "bin/main"))
 	if err != nil {
 		t.Errorf("main file was not created in output directory")
 	}
