@@ -245,15 +245,19 @@ func makeCommandAndRun(args []string) {
 			}
 			for _, path := range binPaths {
 				symPath := filepath.Join(binDir, filepath.Base(path))
-				if _, err := os.Lstat(symPath); err == nil {
+				linkPath, err := os.Readlink(symPath)
+				if err == nil && linkPath != path {
 					if err := os.Remove(symPath); err != nil {
 						log.Fatalf("Failed to remove old symlink: %v", err)
 					}
 				}
-				if err := os.Symlink(path, symPath); err != nil {
-					log.Fatalf("Failed to symlink file: %v", err)
+				if err != nil || linkPath != path {
+					if err := os.Symlink(path, symPath); err != nil {
+						log.Fatalf("Failed to symlink file: %v", err)
+					}
 				}
 			}
+
 		}
 	}
 
