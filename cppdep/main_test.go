@@ -32,7 +32,7 @@ func TestMain(t *testing.T) {
 srcdir: {{.SourceDir}}
 builddir: {{.BuildDir}}
 autoinclude: true
-libaries:
+libraries:
   "uuid/uuid.h": ["-luuid"]
 modes:
   "hello":
