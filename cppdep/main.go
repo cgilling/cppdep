@@ -235,8 +235,24 @@ func makeCommandAndRun(args []string) {
 				fmt.Println(c.BinPath(file))
 			}
 		} else {
-			if _, err := c.CompileAll(files); err != nil {
-				log.Fatalf("Compile Returned with: %v", err)
+			binPaths, err := c.CompileAll(files)
+			if err != nil {
+				log.Fatalf("Compile returned error: %v", err)
+			}
+			binDir := filepath.Join(config.BuildDir, "bin")
+			if err := os.MkdirAll(binDir, 0755); err != nil {
+				log.Fatalf("Failed to make directory: %q (%v)", binDir, err)
+			}
+			for _, path := range binPaths {
+				symPath := filepath.Join(binDir, filepath.Base(path))
+				if _, err := os.Lstat(symPath); err == nil {
+					if err := os.Remove(symPath); err != nil {
+						log.Fatalf("Failed to remove old symlink: %v", err)
+					}
+				}
+				if err := os.Symlink(path, symPath); err != nil {
+					log.Fatalf("Failed to symlink file: %v", err)
+				}
 			}
 		}
 	}

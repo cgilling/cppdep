@@ -57,26 +57,40 @@ typegenerators:
 	if err = confTmpl.Execute(confFile, tmplParams); err != nil {
 		t.Fatalf("Failed to write template: %v", err)
 	}
-	args := []string{
+	defaultArgs := []string{
 		"cppdep",
 		"--fast",
 		"--config",
 		confPath,
 	}
-	makeCommandAndRun(args)
+	makeCommandAndRun(defaultArgs)
 
 	defaultPath := filepath.Join(outputDir, "default/bin/main")
 	if _, err := os.Stat(defaultPath); err != nil {
 		t.Errorf("file not found where expected: %q", defaultPath)
 	}
+	binPath := filepath.Join(outputDir, "bin/main")
+	if path, err := os.Readlink(binPath); err != nil {
+		t.Errorf("Failed to read link for file in root binary directory: %v", err)
+	} else if path != defaultPath {
+		t.Errorf("root binary not linked to correct file: %q != %q", path, defaultPath)
+	}
 
-	args = append(args, "--mode", "hello")
-	makeCommandAndRun(args)
+	helloArgs := make([]string, len(defaultArgs))
+	copy(helloArgs, defaultArgs)
+	helloArgs = append(helloArgs, "--mode", "hello")
+	makeCommandAndRun(helloArgs)
 
 	helloPath := filepath.Join(outputDir, "hello/bin/main")
 	if _, err := os.Stat(helloPath); err != nil {
-		t.Errorf("file not found where expected: %q", defaultPath)
+		t.Errorf("file not found where expected: %q", helloPath)
 	}
+	if path, err := os.Readlink(binPath); err != nil {
+		t.Errorf("Failed to read link for file in root binary directory: %v", err)
+	} else if path != helloPath {
+		t.Errorf("root binary not linked to correct file: %q != %q", path, helloPath)
+	}
+
 	buf := &bytes.Buffer{}
 	cmd := exec.Command(helloPath)
 	cmd.Stdout = buf
@@ -85,4 +99,11 @@ typegenerators:
 		t.Errorf("Flags not passed to compilation correctly.\ngot: %q\nexp: %q", buf.Bytes(), "Hello World!\n")
 	}
 
+	// This tests makes sure that even if nothing new was compiled, the symlink still points to the correct place
+	makeCommandAndRun(defaultArgs)
+	if path, err := os.Readlink(binPath); err != nil {
+		t.Errorf("Failed to read link for file in root binary directory: %v", err)
+	} else if path != defaultPath {
+		t.Errorf("root binary not linked to correct file: %q != %q", path, defaultPath)
+	}
 }
