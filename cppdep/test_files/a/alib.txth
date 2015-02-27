@@ -1,0 +1,8 @@
+#ifndef ALIB_H
+#define ALIB_H
+
+#include <string>
+
+std::string makeuuid();
+
+#endif

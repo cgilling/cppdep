@@ -21,6 +21,7 @@ type Config struct {
 	SourceLibs      map[string][]string
 	Flags           []string
 	Binary          BinaryConfig
+	Modes           map[string]ModeConfig
 	SrcDir          string
 	BuildDir        string
 	TypeGenerators  []TypeGeneratorConfig
@@ -37,6 +38,10 @@ type ShellGeneratorConfig struct {
 	InputPaths  []string
 	OutputFiles []string
 	Path        string
+}
+
+type ModeConfig struct {
+	Flags []string
 }
 
 type BinaryConfig struct {
@@ -73,10 +78,15 @@ func searchForConfigFile(dir string) string {
 }
 
 func main() {
+	makeCommandAndRun(os.Args)
+}
+
+func makeCommandAndRun(args []string) {
 	cmd := cli.App("cppdep", "dependency graph and easy compiles")
 	cmd.Spec = "[OPTIONS] [BINARY_NAMES]..."
 	configPath := cmd.StringOpt("config", "", "path to yaml config")
 	concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
+	mode := cmd.StringOpt("mode", "default", "select a build mode")
 	fast := cmd.BoolOpt("fast", false, "Set to enable fast file scanning")
 	list := cmd.BoolOpt("list", false, "Lists paths of all binaries that would be generated, but does not compile them")
 	cpuprofile := cmd.StringOpt("cpuprof", "", "file to write the cpu profile to")
@@ -138,6 +148,18 @@ func main() {
 			}
 		}
 
+		if config.Modes == nil {
+			config.Modes = make(map[string]ModeConfig)
+		}
+
+		if _, ok := config.Modes["default"]; !ok {
+			config.Modes["default"] = ModeConfig{}
+		}
+
+		if _, ok := config.Modes[*mode]; !ok {
+			log.Fatalf("Cannot find requested mode %q", *mode)
+		}
+
 		var gens []cppdep.Generator
 		for _, gen := range config.TypeGenerators {
 			gens = append(gens, &cppdep.TypeGenerator{
@@ -178,10 +200,14 @@ func main() {
 			log.Fatalf("Failed to rename files: %v", err)
 		}
 
+		flags := make([]string, len(config.Flags))
+		copy(flags, config.Flags)
+		flags = append(flags, config.Modes[*mode].Flags...)
+
 		c := &cppdep.Compiler{
-			OutputDir:   config.BuildDir,
+			OutputDir:   filepath.Join(config.BuildDir, *mode),
 			IncludeDirs: st.IncludeDirs,
-			Flags:       config.Flags,
+			Flags:       flags,
 			Concurrency: *concurrency,
 		}
 		var files []*cppdep.File
@@ -215,5 +241,5 @@ func main() {
 		}
 	}
 
-	cmd.Run(os.Args)
+	cmd.Run(args)
 }

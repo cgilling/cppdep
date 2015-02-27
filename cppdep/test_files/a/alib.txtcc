@@ -1,0 +1,12 @@
+#include "alib.h"
+
+#include <uuid/uuid.h>
+
+std::string makeuuid() {
+  char uuidBuffer[37];
+  uuid_t uuid;
+  unsigned int uuidBucket;
+  uuid_generate(uuid);
+  uuid_unparse_upper(uuid,uuidBuffer);
+  return std::string(uuidBuffer);
+}
