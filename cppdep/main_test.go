@@ -33,7 +33,7 @@ srcdir: {{.SourceDir}}
 builddir: {{.BuildDir}}
 autoinclude: true
 libraries:
-  "uuid/uuid.h": ["-luuid"]
+  "zlib.h": ["-lz"]
 modes:
   "hello":
     "flags": ["-DHELLO"]

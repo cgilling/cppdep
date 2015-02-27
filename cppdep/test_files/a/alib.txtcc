@@ -1,12 +1,31 @@
 #include "alib.h"
 
-#include <uuid/uuid.h>
+#include <zlib.h>
 
-std::string makeuuid() {
-  char uuidBuffer[37];
-  uuid_t uuid;
-  unsigned int uuidBucket;
-  uuid_generate(uuid);
-  uuid_unparse_upper(uuid,uuidBuffer);
-  return std::string(uuidBuffer);
+std::string gunzipPath(const char* filepath) {
+  gzFile fp = gzopen(filepath, "rb");
+
+  if (fp == NULL) {
+    printf("Failed to open file: %s\n", filepath);
+    return "";
+  }
+
+  std::string str;
+  char buf[1025];
+  while(true) {
+    int num = gzread(fp, buf, 1024);
+    if (num < 0) {
+      printf("Error reading gzip file: %s\n", filepath);
+      return "";
+    } else if (num == 0) {
+      break;
+    } else {
+      buf[num] = '\0';
+      str += buf;
+    }
+  }
+
+  gzclose(fp);
+
+  return str;
 }
