@@ -26,7 +26,7 @@ type Compiler struct {
 // BinPath returns the path where the binary for a given main file will be written.
 func (c *Compiler) BinPath(file *File) string {
 	if file.BinaryName != "" {
-		return filepath.Join(c.OutputDir, file.BinaryName)
+		return filepath.Join(c.OutputDir, "bin", file.BinaryName)
 	}
 	base := filepath.Base(file.Path)
 	dotIndex := strings.LastIndex(base, ".")

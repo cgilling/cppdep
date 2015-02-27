@@ -362,12 +362,13 @@ func TestCompileRenamedBinaries(t *testing.T) {
 
 	c := &Compiler{OutputDir: outputDir}
 
+	expectedBinPath := filepath.Join(outputDir, "bin", "change_bin_name")
 	binaryPath, err := c.Compile(mainFile)
 	switch {
 	case err != nil:
 		t.Errorf("Compile failed: %v", err)
-	case binaryPath != filepath.Join(outputDir, "change_bin_name"):
-		t.Errorf("Output filename was not change: %q", binaryPath)
+	case binaryPath != expectedBinPath:
+		t.Errorf("Output filename was not changed correctly: %q != %q", binaryPath, expectedBinPath)
 	}
 
 }
