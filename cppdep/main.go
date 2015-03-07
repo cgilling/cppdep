@@ -94,7 +94,7 @@ func makeCommandAndRun(args []string) {
 	srcDir := cmd.StringOpt("src", "", "path to the src directory")
 	binaryNames := cmd.StringsArg(
 		"BINARY_NAMES",
-		[]string{"*"},
+		nil,
 		"name of the binary to build, main source file should be BINARY_NAME.cc, this can be a globbing expression as well."+
 			" A '*' on its own means 'all autodetected main source files'",
 	)
@@ -213,6 +213,10 @@ func makeCommandAndRun(args []string) {
 			Concurrency: *concurrency,
 		}
 		var files []*cppdep.File
+		if *binaryNames == nil {
+			*binaryNames = []string{"*"}
+		}
+
 		for _, binaryName := range *binaryNames {
 			if binaryName == "*" {
 				files, err = st.FindMainFiles()
