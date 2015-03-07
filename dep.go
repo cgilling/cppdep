@@ -15,6 +15,7 @@ const (
 	HeaderType = iota + 1
 	SourceType
 	GenDepType
+	LibType
 )
 
 type SourceTree struct {
@@ -24,7 +25,11 @@ type SourceTree struct {
 	HeaderExts  []string
 	SourceExts  []string
 
-	// Libraries is a map that defines library header includes to the linker statement needed.
+	// Libraries is a map of library name to a list of source files that will be
+	// compiled together (along with all necessary dependencies) to create a shared library
+	Libraries map[string][]string
+
+	// LinkLibraries is a map that defines library header includes to the linker statement needed.
 	// For example if #include <zlib.h> were in a file, this would be the approriate value to
 	// be in the dictionary {"zlib.h": []string{"-lz"]}}. The value is a slice of strings so that
 	// mutliple statements can be provided, the main purpose being if a library search path needs
@@ -236,6 +241,24 @@ func (st *SourceTree) ProcessDirectory() error {
 			}
 			walkFunc(outPath, info, nil)
 		}
+	}
+
+	for libname, sources := range st.Libraries {
+		var depList []*File
+		for _, source := range sources {
+			path := filepath.Join(st.SrcRoot, source)
+			dep, ok := seen[path]
+			if !ok {
+				return fmt.Errorf("Unable to find source (%s) for library %q", source, libname)
+			}
+			depList = append(depList, dep)
+		}
+		file := &File{
+			Type:       LibType,
+			BinaryName: libname,
+			Deps:       depList,
+		}
+		st.sources = append(st.sources, file)
 	}
 
 	// Now scan all the files looking for includes and creating a dependency graph

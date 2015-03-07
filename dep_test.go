@@ -78,6 +78,36 @@ func TestSourceLib(t *testing.T) {
 	}
 }
 
+func TestLibrary(t *testing.T) {
+	st := &SourceTree{
+		SrcRoot:   "test_files/library",
+		Libraries: map[string][]string{"mylib": {"lib.cc"}},
+	}
+	st.ProcessDirectory()
+	libFile := st.FindSource("mylib")
+	switch {
+	case libFile == nil:
+		t.Errorf("Unable to find file for mylib")
+	case len(libFile.Deps) != 1:
+		t.Errorf("Expected lib to have one direct dependency: got %d", len(libFile.Deps))
+	}
+
+	deps := libFile.DepListFollowSource()
+	switch {
+	case countEntries(deps, filepath.Join(st.SrcRoot, "lib.cc")) != 1:
+		t.Errorf("could not find lib dependency lib.cc")
+	case countEntries(deps, filepath.Join(st.SrcRoot, "lib.h")) != 1:
+		t.Errorf("could not find lib dependency lib.h")
+	case countEntries(deps, filepath.Join(st.SrcRoot, "a.h")) != 1:
+		t.Errorf("could not find lib dependency a.h")
+	case countEntries(deps, filepath.Join(st.SrcRoot, "a.cc")) != 1:
+		t.Errorf("could not find lib dependency a.cc")
+	case len(deps) != 4:
+		t.Errorf("expected to only find 4 deps, got %d", len(deps))
+	}
+
+}
+
 func TestDepSystemLibrary(t *testing.T) {
 	st := &SourceTree{
 		SrcRoot:       "test_files/gzcat",

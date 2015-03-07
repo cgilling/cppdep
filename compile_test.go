@@ -165,6 +165,34 @@ func TestCompileSourceLib(t *testing.T) {
 	}
 }
 
+func TestCompileLibrary(t *testing.T) {
+	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
+	if err != nil {
+		t.Fatalf("Failed to setup output dir")
+	}
+	defer os.RemoveAll(outputDir)
+
+	st := &SourceTree{
+		SrcRoot:   "test_files/library",
+		Libraries: map[string][]string{"mylib": {"lib.cc"}},
+	}
+	st.ProcessDirectory()
+	libFile := st.FindSource("mylib")
+
+	c := &Compiler{
+		Flags:     []string{"-fPIC"},
+		OutputDir: outputDir,
+	}
+	path, err := c.Compile(libFile)
+
+	switch {
+	case err != nil:
+		t.Errorf("Compile returned error: %v", err)
+	case path != filepath.Join(outputDir, "bin/mylib.so"):
+		t.Errorf("output location not as expected: %q", path)
+	}
+}
+
 func TestSystemLibraryCompile(t *testing.T) {
 	outputDir, err := ioutil.TempDir("", "cppdep_compile_test")
 	if err != nil {

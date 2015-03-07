@@ -25,12 +25,18 @@ type Compiler struct {
 
 // BinPath returns the path where the binary for a given main file will be written.
 func (c *Compiler) BinPath(file *File) string {
+	var path string
 	if file.BinaryName != "" {
-		return filepath.Join(c.OutputDir, "bin", file.BinaryName)
+		path = filepath.Join(c.OutputDir, "bin", file.BinaryName)
+	} else {
+		base := filepath.Base(file.Path)
+		dotIndex := strings.LastIndex(base, ".")
+		path = filepath.Join(c.OutputDir, "bin", base[:dotIndex])
 	}
-	base := filepath.Base(file.Path)
-	dotIndex := strings.LastIndex(base, ".")
-	return filepath.Join(c.OutputDir, "bin", base[:dotIndex])
+	if file.Type == LibType {
+		path = path + ".so"
+	}
+	return path
 }
 
 // CompileAll will compile binaries whose main functions are defined by the entries
@@ -237,6 +243,9 @@ func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path s
 	}
 
 	cmd := exec.Command("g++", "-o", binaryPath)
+	if file.Type == LibType {
+		cmd.Args = append(cmd.Args, "-shared")
+	}
 	cmd.Args = append(cmd.Args, c.Flags...)
 	cmd.Args = append(cmd.Args, objectPaths...)
 	cmd.Args = append(cmd.Args, libList...)
