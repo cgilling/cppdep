@@ -32,7 +32,7 @@ func TestMain(t *testing.T) {
 srcdir: {{.SourceDir}}
 builddir: {{.BuildDir}}
 autoinclude: true
-libraries:
+linklibraries:
   "zlib.h": ["-lz"]
 modes:
   "hello":

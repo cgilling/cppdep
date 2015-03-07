@@ -17,7 +17,7 @@ type Config struct {
 	AutoInclude     bool
 	Includes        []string
 	Excludes        []string
-	Libraries       map[string][]string
+	LinkLibraries   map[string][]string
 	SourceLibs      map[string][]string
 	Flags           []string
 	Binary          BinaryConfig
@@ -185,7 +185,7 @@ func makeCommandAndRun(args []string) {
 			AutoInclude:     config.AutoInclude,
 			IncludeDirs:     config.Includes,
 			ExcludeDirs:     config.Excludes,
-			Libraries:       config.Libraries,
+			LinkLibraries:   config.LinkLibraries,
 			SourceLibs:      config.SourceLibs,
 			Concurrency:     *concurrency,
 			UseFastScanning: *fast,

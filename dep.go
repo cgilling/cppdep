@@ -29,7 +29,7 @@ type SourceTree struct {
 	// be in the dictionary {"zlib.h": []string{"-lz"]}}. The value is a slice of strings so that
 	// mutliple statements can be provided, the main purpose being if a library search path needs
 	// to be added, which would look something like this: {"libpq-fe.h": ["-L/usr/pgsql-9.2/lib", "-lpq"]}
-	Libraries map[string][]string
+	LinkLibraries map[string][]string
 
 	// SourceLibs are a way of defining a relationship where a single.h file is implemented by multiple
 	// source files in the source tree. The key is the path to the header file relative to the root of the
@@ -289,7 +289,7 @@ func (st *SourceTree) ProcessDirectory() error {
 
 		for scan.Scan() {
 			if scan.Type() == BracketIncludeType {
-				if libs, ok := st.Libraries[scan.Text()]; ok {
+				if libs, ok := st.LinkLibraries[scan.Text()]; ok {
 					file.Libs = append(file.Libs, libs...)
 				}
 			}

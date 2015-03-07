@@ -80,8 +80,8 @@ func TestSourceLib(t *testing.T) {
 
 func TestDepSystemLibrary(t *testing.T) {
 	st := &SourceTree{
-		SrcRoot:   "test_files/gzcat",
-		Libraries: map[string][]string{"zlib.h": {"-lz"}},
+		SrcRoot:       "test_files/gzcat",
+		LinkLibraries: map[string][]string{"zlib.h": {"-lz"}},
 	}
 	st.ProcessDirectory()
 	mainFile := st.FindSource("gzcat")

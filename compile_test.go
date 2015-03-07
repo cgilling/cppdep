@@ -173,8 +173,8 @@ func TestSystemLibraryCompile(t *testing.T) {
 	defer os.RemoveAll(outputDir)
 
 	st := &SourceTree{
-		SrcRoot:   "test_files/gzcat",
-		Libraries: map[string][]string{"zlib.h": {"-lz"}},
+		SrcRoot:       "test_files/gzcat",
+		LinkLibraries: map[string][]string{"zlib.h": {"-lz"}},
 	}
 	st.ProcessDirectory()
 
