@@ -18,7 +18,7 @@ type Config struct {
 	Includes        []string
 	Excludes        []string
 	LinkLibraries   map[string][]string
-	Libraries       map[string][]string
+	Libraries       map[string]LibraryConfig
 	SourceLibs      map[string][]string
 	Flags           []string
 	Binary          BinaryConfig
@@ -27,6 +27,10 @@ type Config struct {
 	BuildDir        string
 	TypeGenerators  []TypeGeneratorConfig
 	ShellGenerators []ShellGeneratorConfig
+}
+
+type LibraryConfig struct {
+	Sources []string
 }
 
 type TypeGeneratorConfig struct {
@@ -181,13 +185,18 @@ func makeCommandAndRun(args []string) {
 			log.Fatalf("Failed to get absolute path of build dir")
 		}
 
+		libraries := make(map[string][]string)
+		for libname, libConf := range config.Libraries {
+			libraries[libname] = libConf.Sources
+		}
+
 		st := &cppdep.SourceTree{
 			SrcRoot:         *srcDir,
 			AutoInclude:     config.AutoInclude,
 			IncludeDirs:     config.Includes,
 			ExcludeDirs:     config.Excludes,
 			LinkLibraries:   config.LinkLibraries,
-			Libraries:       config.Libraries,
+			Libraries:       libraries,
 			SourceLibs:      config.SourceLibs,
 			Concurrency:     *concurrency,
 			UseFastScanning: *fast,
