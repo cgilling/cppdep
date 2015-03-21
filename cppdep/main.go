@@ -14,17 +14,17 @@ import (
 )
 
 type Config struct {
+	SrcDir          string
+	BuildDir        string
 	AutoInclude     bool
-	Includes        []string
 	Excludes        []string
+	Includes        []string
+	Flags           []string
+	Modes           map[string]ModeConfig
 	LinkLibraries   map[string][]string
 	Libraries       map[string]LibraryConfig
 	SourceLibs      map[string][]string
-	Flags           []string
 	Binary          BinaryConfig
-	Modes           map[string]ModeConfig
-	SrcDir          string
-	BuildDir        string
 	TypeGenerators  []TypeGeneratorConfig
 	ShellGenerators []ShellGeneratorConfig
 }
