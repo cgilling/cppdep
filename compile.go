@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -16,11 +17,14 @@ var (
 )
 
 type Compiler struct {
-	IncludeDirs []string
+	IncludeDirs []string // include directories to be passed to compile
 	Flags       []string // compile flags passed to the compiler
-	OutputDir   string
 
-	Concurrency int
+	// OutputDir is base output dir, object files written to OutputDir/obj
+	// and compiled binaries will be written to OutputDir/bin
+	OutputDir string
+
+	Concurrency int // the number of concurrent compiles
 }
 
 // BinPath returns the path where the binary for a given main file will be written.
@@ -50,6 +54,11 @@ func (c *Compiler) CompileAll(files []*File) (paths []string, err error) {
 	if err := os.MkdirAll(filepath.Join(c.OutputDir, "obj"), 0755); err != nil {
 		return nil, err
 	}
+
+	var sortedFiles []*File
+	sortedFiles = append(sortedFiles, files...)
+	sort.Sort(byBase(sortedFiles))
+	files = sortedFiles
 	uniqueSources := make(map[string]*File)
 	var fileSources [][]*File
 	var fileLibs [][]string
@@ -100,7 +109,12 @@ func (c *Compiler) CompileAll(files []*File) (paths []string, err error) {
 		go compileDepLoop()
 	}
 
+	var sortedSources []*File
 	for _, source := range uniqueSources {
+		sortedSources = append(sortedSources, source)
+	}
+	sort.Sort(byBase(sortedSources))
+	for _, source := range sortedSources {
 		sourceCh <- source
 	}
 	close(sourceCh)
@@ -296,3 +310,9 @@ func needsRebuild(inputPaths, outputPaths []string) (bool, error) {
 	}
 	return inputModTime.After(outputModTime), nil
 }
+
+type byBase []*File
+
+func (a byBase) Len() int           { return len(a) }
+func (a byBase) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byBase) Less(i, j int) bool { return filepath.Base(a[i].Path) < filepath.Base(a[j].Path) }
