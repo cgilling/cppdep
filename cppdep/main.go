@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+	"sort"
 
 	"github.com/cgilling/cppdep"
 	cli "github.com/jawher/mow.cli"
@@ -242,6 +243,7 @@ func makeCommandAndRun(args []string) {
 		}
 
 		if *list {
+			sort.Sort(cppdep.ByBase(files))
 			for _, file := range files {
 				fmt.Println(c.BinPath(file))
 			}

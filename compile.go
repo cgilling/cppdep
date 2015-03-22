@@ -57,7 +57,7 @@ func (c *Compiler) CompileAll(files []*File) (paths []string, err error) {
 
 	var sortedFiles []*File
 	sortedFiles = append(sortedFiles, files...)
-	sort.Sort(byBase(sortedFiles))
+	sort.Sort(ByBase(sortedFiles))
 	files = sortedFiles
 	uniqueSources := make(map[string]*File)
 	var fileSources [][]*File
@@ -113,7 +113,7 @@ func (c *Compiler) CompileAll(files []*File) (paths []string, err error) {
 	for _, source := range uniqueSources {
 		sortedSources = append(sortedSources, source)
 	}
-	sort.Sort(byBase(sortedSources))
+	sort.Sort(ByBase(sortedSources))
 	for _, source := range sortedSources {
 		sourceCh <- source
 	}
@@ -170,7 +170,6 @@ func (c *Compiler) CompileAll(files []*File) (paths []string, err error) {
 	for _, file := range files {
 		binPaths = append(binPaths, c.BinPath(file))
 	}
-
 	return binPaths, nil
 }
 
@@ -311,8 +310,8 @@ func needsRebuild(inputPaths, outputPaths []string) (bool, error) {
 	return inputModTime.After(outputModTime), nil
 }
 
-type byBase []*File
+type ByBase []*File
 
-func (a byBase) Len() int           { return len(a) }
-func (a byBase) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a byBase) Less(i, j int) bool { return filepath.Base(a[i].Path) < filepath.Base(a[j].Path) }
+func (a ByBase) Len() int           { return len(a) }
+func (a ByBase) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByBase) Less(i, j int) bool { return filepath.Base(a[i].Path) < filepath.Base(a[j].Path) }
