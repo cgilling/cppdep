@@ -35,8 +35,8 @@ autoinclude: true
 linklibraries:
   "zlib.h": ["-lz"]
 modes:
-  "hello":
-    "flags": ["-DHELLO"]
+  hello:
+    flags: ["-DHELLO"]
 typegenerators:
   -
     inputext: ".txtcc"
