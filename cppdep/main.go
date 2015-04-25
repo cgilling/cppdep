@@ -6,12 +6,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/pprof"
 
 	"github.com/cgilling/cppdep"
 	cli "github.com/jawher/mow.cli"
 	"gopkg.in/yaml.v1"
 )
+
+const maxGoProcs = 4
 
 type Config struct {
 	SrcDir          string
@@ -163,6 +166,17 @@ func makeCommandAndRun(args []string) {
 
 		if _, ok := config.Modes[*mode]; !ok {
 			log.Fatalf("Cannot find requested mode %q", *mode)
+		}
+
+		if runtime.GOMAXPROCS(0) == 1 {
+			maxProcs := maxGoProcs
+			if runtime.NumCPU() < maxProcs {
+				maxProcs = runtime.NumCPU()
+			}
+			if *concurrency < maxProcs {
+				maxProcs = *concurrency
+			}
+			runtime.GOMAXPROCS(maxProcs)
 		}
 
 		var gens []cppdep.Generator
