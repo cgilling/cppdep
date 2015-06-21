@@ -121,6 +121,7 @@ func makeCommandAndRun(args []string) {
 	mode := cmd.StringOpt("mode", "default", "select a build mode")
 	fast := cmd.BoolOpt("fast", false, "Set to enable fast file scanning")
 	list := cmd.BoolOpt("list", false, "Lists paths of all binaries that would be generated, but does not compile them")
+	refList := cmd.BoolOpt("ref-list", false, "Lists all references to files used to build requested binaries. Format: binaryName: sourcePath => depPath")
 	cpuprofile := cmd.StringOpt("cpuprof", "", "file to write the cpu profile to")
 	srcDir := cmd.StringOpt("src", "", "path to the src directory")
 	binaryNames := cmd.StringsArg(
@@ -299,6 +300,16 @@ func makeCommandAndRun(args []string) {
 			sort.Sort(cppdep.ByBase(files))
 			for _, file := range files {
 				fmt.Println(c.BinPath(file))
+			}
+		} else if *refList {
+			sort.Sort(cppdep.ByBase(files))
+			for _, file := range files {
+				refMap := file.RefMap()
+				for depPath, sourceList := range refMap {
+					for _, source := range sourceList {
+						fmt.Printf("%s: %s => %s\n", c.BinPath(file), source.Path, depPath)
+					}
+				}
 			}
 		} else {
 			binPaths, err := c.CompileAll(files)

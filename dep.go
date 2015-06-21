@@ -517,7 +517,7 @@ func (f *File) DepList() []*File {
 		f.stMu.Lock()
 		defer f.stMu.Unlock()
 	}
-	dl := f.generateDepList(false)
+	dl := f.generateDepList(false, nil)
 	f.unvisitDeps(false)
 	return dl
 }
@@ -530,27 +530,47 @@ func (f *File) DepListFollowSource() []*File {
 		f.stMu.Lock()
 		defer f.stMu.Unlock()
 	}
-	dl := f.generateDepList(true)
+	dl := f.generateDepList(true, nil)
 	f.unvisitDeps(true)
 	return dl
 }
 
-func (f *File) generateDepList(followSource bool) []*File {
+// RefMap return a map containing a list of all files that reference the
+// file found at the path represented by the key. File references are found
+// using the same rules as DepListFollowSource.
+func (f *File) RefMap() map[string][]*File {
+	if f.stMu != nil {
+		f.stMu.Lock()
+		defer f.stMu.Unlock()
+	}
+	refMap := make(map[string][]*File)
+	f.generateDepList(true, refMap)
+	f.unvisitDeps(true)
+	return refMap
+}
+
+func (f *File) generateDepList(followSource bool, refMap map[string][]*File) []*File {
 	f.visited = true
 	var dl []*File
 
 	for _, dep := range f.Deps {
+		if refMap != nil {
+			refMap[dep.Path] = append(refMap[dep.Path], f)
+		}
 		if dep.visited {
 			continue
 		}
 		dl = append(dl, dep)
-		dl = append(dl, dep.generateDepList(followSource)...)
+		dl = append(dl, dep.generateDepList(followSource, refMap)...)
 	}
 	if followSource && f.ImplFiles != nil {
 		for _, source := range f.ImplFiles {
+			if refMap != nil {
+				refMap[source.Path] = append(refMap[source.Path], f)
+			}
 			if !source.visited {
 				dl = append(dl, source)
-				dl = append(dl, source.generateDepList(followSource)...)
+				dl = append(dl, source.generateDepList(followSource, refMap)...)
 			}
 		}
 	}

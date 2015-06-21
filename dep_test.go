@@ -385,3 +385,27 @@ func TestFileDepList(t *testing.T) {
 		t.Errorf("Expected DepList to contain b.h once, found %d times", countEntries(depList, "b.h"))
 	}
 }
+
+func TestFileRefMap(t *testing.T) {
+	acc := &File{Path: "a.cc"}
+	a := &File{Path: "a.h", ImplFiles: []*File{acc}}
+	acc.Deps = []*File{a}
+	b := &File{Path: "b.h", Deps: []*File{a}}
+	root := &File{
+		Path: "main.cc",
+		Deps: []*File{
+			a,
+			b,
+		},
+	}
+
+	refMap := root.RefMap()
+	switch {
+	case len(refMap["a.h"]) != 3:
+		t.Errorf("Expected three files to reference a.h, got %d", len(refMap["a.h"]))
+	case len(refMap["b.h"]) != 1:
+		t.Errorf("Expected one file to reference b.h, got %d", len(refMap["b.h"]))
+	case len(refMap["a.cc"]) != 1:
+		t.Errorf("Expected one file to reference a.cc, got %d", len(refMap["a.cc"]))
+	}
+}
