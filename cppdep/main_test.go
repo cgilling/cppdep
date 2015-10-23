@@ -72,7 +72,7 @@ typegenerators:
 	binPath := filepath.Join(outputDir, "bin/main")
 	if path, err := os.Readlink(binPath); err != nil {
 		t.Errorf("Failed to read link for file in root binary directory: %v", err)
-	} else if path != defaultPath {
+	} else if path != "../default/bin/main" {
 		t.Errorf("root binary not linked to correct file: %q != %q", path, defaultPath)
 	}
 
@@ -87,12 +87,12 @@ typegenerators:
 	}
 	if path, err := os.Readlink(binPath); err != nil {
 		t.Errorf("Failed to read link for file in root binary directory: %v", err)
-	} else if path != helloPath {
+	} else if path != "../hello/bin/main" {
 		t.Errorf("root binary not linked to correct file: %q != %q", path, helloPath)
 	}
 
 	buf := &bytes.Buffer{}
-	cmd := exec.Command(helloPath)
+	cmd := exec.Command(binPath)
 	cmd.Stdout = buf
 	cmd.Run()
 	if string(buf.Bytes()) != "Hello World!\n" {
@@ -103,7 +103,7 @@ typegenerators:
 	makeCommandAndRun(defaultArgs)
 	if path, err := os.Readlink(binPath); err != nil {
 		t.Errorf("Failed to read link for file in root binary directory: %v", err)
-	} else if path != defaultPath {
+	} else if path != "../default/bin/main" {
 		t.Errorf("root binary not linked to correct file: %q != %q", path, defaultPath)
 	}
 }
