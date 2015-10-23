@@ -282,7 +282,7 @@ func makeCommandAndRun(args []string) {
 						log.Fatalf("Failed to remove old symlink: %v", err)
 					}
 				}
-				if err != nil || linkPath != path {
+				if err != nil || linkPath != relPath {
 					if err := os.Symlink(relPath, symPath); err != nil {
 						log.Fatalf("Failed to symlink file: %v", err)
 					}
