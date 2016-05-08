@@ -18,7 +18,17 @@ import (
 
 const maxGoProcs = 4
 
-const version = "1.1"
+const version = "1.2"
+
+var platform string
+
+func init() {
+	hostInfo, err := host.Info()
+	if err != nil {
+		log.Fatalf("failed to get platform info: %v", err)
+	}
+	platform = fmt.Sprintf("%s-%s", hostInfo.Platform, hostInfo.PlatformVersion)
+}
 
 type Config struct {
 	SrcDir          string
@@ -128,11 +138,6 @@ func makeCommandAndRun(args []string) {
 			return
 		}
 
-		hostInfo, err := host.Info()
-		if err != nil {
-			log.Fatalf("failed to get platform info: %v", err)
-		}
-		platform := fmt.Sprintf("%s-%s", hostInfo.Platform, hostInfo.PlatformVersion)
 		if *platformFlag {
 			fmt.Printf("%s\n", platform)
 			return
@@ -237,6 +242,8 @@ func makeCommandAndRun(args []string) {
 			libraries[libname] = libConf.Sources
 		}
 
+		buildDir := filepath.Join(config.BuildDir, platform)
+
 		st := &cppdep.SourceTree{
 			SrcRoot:         *srcDir,
 			AutoInclude:     config.AutoInclude,
@@ -248,7 +255,7 @@ func makeCommandAndRun(args []string) {
 			Concurrency:     *concurrency,
 			UseFastScanning: *fast,
 			Generators:      gens,
-			BuildDir:        config.BuildDir,
+			BuildDir:        buildDir,
 		}
 		if err := st.ProcessDirectory(); err != nil {
 			log.Fatalf("Failed to process source directory: %s (%v)", *srcDir, err)
@@ -263,7 +270,7 @@ func makeCommandAndRun(args []string) {
 		flags = append(flags, config.Modes[*mode].Flags...)
 
 		c := &cppdep.Compiler{
-			OutputDir:   filepath.Join(config.BuildDir, *mode),
+			OutputDir:   filepath.Join(buildDir, *mode),
 			IncludeDirs: st.IncludeDirs,
 			Flags:       flags,
 			Concurrency: *concurrency,

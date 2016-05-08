@@ -64,14 +64,14 @@ typegenerators:
 	}
 	makeCommandAndRun(defaultArgs)
 
-	defaultPath := filepath.Join(outputDir, "default/bin/main")
+	defaultPath := filepath.Join(outputDir, platform, "default/bin/main")
 	if _, err := os.Stat(defaultPath); err != nil {
 		t.Errorf("file not found where expected: %q", defaultPath)
 	}
 	binPath := filepath.Join(outputDir, "bin/main")
 	if path, err := os.Readlink(binPath); err != nil {
 		t.Errorf("Failed to read link for file in root binary directory: %v", err)
-	} else if path != "../default/bin/main" {
+	} else if path != filepath.Join("..", platform, "default/bin/main") {
 		t.Errorf("root binary not linked to correct file: %q != %q", path, defaultPath)
 	}
 
@@ -80,13 +80,13 @@ typegenerators:
 	helloArgs = append(helloArgs, "--mode", "hello")
 	makeCommandAndRun(helloArgs)
 
-	helloPath := filepath.Join(outputDir, "hello/bin/main")
+	helloPath := filepath.Join(outputDir, platform, "hello/bin/main")
 	if _, err := os.Stat(helloPath); err != nil {
 		t.Errorf("file not found where expected: %q", helloPath)
 	}
 	if path, err := os.Readlink(binPath); err != nil {
 		t.Errorf("Failed to read link for file in root binary directory: %v", err)
-	} else if path != "../hello/bin/main" {
+	} else if path != filepath.Join("..", platform, "hello/bin/main") {
 		t.Errorf("root binary not linked to correct file: %q != %q", path, helloPath)
 	}
 
@@ -102,7 +102,7 @@ typegenerators:
 	makeCommandAndRun(defaultArgs)
 	if path, err := os.Readlink(binPath); err != nil {
 		t.Errorf("Failed to read link for file in root binary directory: %v", err)
-	} else if path != "../default/bin/main" {
+	} else if path != filepath.Join("..", platform, "default/bin/main") {
 		t.Errorf("root binary not linked to correct file: %q != %q", path, defaultPath)
 	}
 }
