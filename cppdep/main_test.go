@@ -42,7 +42,6 @@ typegenerators:
     inputext: ".txtcc"
     outputexts: [".cc"]
     command: ["cp", "$CPPDEP_INPUT_FILE", "$CPPDEP_OUTPUT_PREFIX.cc"]
-typegenerators:
   -
     inputext: ".txth"
     outputexts: [".h"]

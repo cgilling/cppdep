@@ -12,7 +12,8 @@ import (
 
 	"github.com/cgilling/cppdep"
 	cli "github.com/jawher/mow.cli"
-	"gopkg.in/yaml.v1"
+	"github.com/shirou/gopsutil/host"
+	"gopkg.in/yaml.v2"
 )
 
 const maxGoProcs = 4
@@ -26,11 +27,19 @@ type Config struct {
 	Flags           []string
 	Modes           map[string]ModeConfig
 	LinkLibraries   map[string][]string
+	Platforms       map[string]PlatformConfig
 	Libraries       map[string]LibraryConfig
 	SourceLibs      map[string][]string
 	Binary          BinaryConfig
 	TypeGenerators  []TypeGeneratorConfig
 	ShellGenerators []ShellGeneratorConfig
+}
+
+type PlatformConfig struct {
+	Excludes      []string
+	Includes      []string
+	Flags         []string
+	LinkLibraries map[string][]string
 }
 
 type LibraryConfig struct {
@@ -93,6 +102,7 @@ func main() {
 func makeCommandAndRun(args []string) {
 	cmd := cli.App("cppdep", "dependency graph and easy compiles")
 	cmd.Spec = "[OPTIONS] [BINARY_NAMES]..."
+	platformFlag := cmd.BoolOpt("platform", false, "print out the name of the platform currently being run on")
 	configPath := cmd.StringOpt("config", "", "path to yaml config")
 	concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
 	mode := cmd.StringOpt("mode", "default", "select a build mode")
@@ -108,6 +118,17 @@ func makeCommandAndRun(args []string) {
 	)
 
 	cmd.Action = func() {
+		var err error
+		hostInfo, err := host.Info()
+		if err != nil {
+			log.Fatalf("failed to get platform info: %v", err)
+		}
+		platform := fmt.Sprintf("%s-%s", hostInfo.Platform, hostInfo.PlatformVersion)
+		if *platformFlag {
+			fmt.Printf("%s\n", platform)
+			return
+		}
+
 		if *cpuprofile != "" {
 			f, err := os.Create(*cpuprofile)
 			if err != nil {
@@ -134,6 +155,8 @@ func makeCommandAndRun(args []string) {
 			log.Fatalf("Failed to read config file: %q", err)
 		}
 
+		MergePlatformConfig(platform, config)
+
 		if config.BuildDir == "" {
 			log.Fatalf("BuildDir must be set")
 		}
@@ -142,7 +165,7 @@ func makeCommandAndRun(args []string) {
 			config.BuildDir = filepath.Join(filepath.Dir(*configPath), config.BuildDir)
 		}
 
-		err := os.MkdirAll(config.BuildDir, 0755)
+		err = os.MkdirAll(config.BuildDir, 0755)
 		if err != nil {
 			log.Fatalf("Failed to create build dir: %s (%v)", config.BuildDir, err)
 		}
