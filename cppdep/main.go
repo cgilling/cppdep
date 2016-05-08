@@ -18,6 +18,8 @@ import (
 
 const maxGoProcs = 4
 
+const version = "1.1"
+
 type Config struct {
 	SrcDir          string
 	BuildDir        string
@@ -103,6 +105,7 @@ func makeCommandAndRun(args []string) {
 	cmd := cli.App("cppdep", "dependency graph and easy compiles")
 	cmd.Spec = "[OPTIONS] [BINARY_NAMES]..."
 	platformFlag := cmd.BoolOpt("platform", false, "print out the name of the platform currently being run on")
+	versionFlag := cmd.BoolOpt("version", false, "print version string")
 	configPath := cmd.StringOpt("config", "", "path to yaml config")
 	concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
 	mode := cmd.StringOpt("mode", "default", "select a build mode")
@@ -119,6 +122,12 @@ func makeCommandAndRun(args []string) {
 
 	cmd.Action = func() {
 		var err error
+
+		if *versionFlag {
+			fmt.Println(version)
+			return
+		}
+
 		hostInfo, err := host.Info()
 		if err != nil {
 			log.Fatalf("failed to get platform info: %v", err)
