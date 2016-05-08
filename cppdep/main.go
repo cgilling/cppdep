@@ -187,11 +187,14 @@ func makeCommandAndRun(args []string) {
 
 		if *srcDir == "" && config.SrcDir == "" {
 			log.Fatalf("a source directory must be set through --src or config.srcdir")
-		} else if *srcDir == "" {
-			if filepath.IsAbs(config.SrcDir) {
-				*srcDir = config.SrcDir
-			} else {
-				*srcDir = filepath.Join(filepath.Dir(*configPath), config.SrcDir)
+		} else if *srcDir != "" {
+			config.SrcDir, err = filepath.Abs(*srcDir)
+			if err != nil {
+				log.Fatalf("Failed to get absolute path of %q: %v", *srcDir, err)
+			}
+		} else {
+			if !filepath.IsAbs(config.SrcDir) {
+				config.SrcDir = filepath.Join(filepath.Dir(*configPath), config.SrcDir)
 			}
 		}
 
@@ -230,7 +233,7 @@ func makeCommandAndRun(args []string) {
 			gens = append(gens, &cppdep.ShellGenerator{
 				InputPaths:    gen.InputPaths,
 				OutputFiles:   gen.OutputFiles,
-				ShellFilePath: filepath.Join(*srcDir, gen.Path),
+				ShellFilePath: filepath.Join(config.SrcDir, gen.Path),
 			})
 		}
 
@@ -246,7 +249,7 @@ func makeCommandAndRun(args []string) {
 		buildDir := filepath.Join(config.BuildDir, platform)
 
 		st := &cppdep.SourceTree{
-			SrcRoot:         *srcDir,
+			SrcRoot:         config.SrcDir,
 			AutoInclude:     config.AutoInclude,
 			IncludeDirs:     config.Includes,
 			ExcludeDirs:     config.Excludes,
@@ -259,7 +262,7 @@ func makeCommandAndRun(args []string) {
 			BuildDir:        buildDir,
 		}
 		if err := st.ProcessDirectory(); err != nil {
-			log.Fatalf("Failed to process source directory: %s (%v)", *srcDir, err)
+			log.Fatalf("Failed to process source directory: %s (%v)", config.SrcDir, err)
 		}
 
 		if err := st.Rename(config.Binary.Rename); err != nil {
@@ -306,9 +309,19 @@ func makeCommandAndRun(args []string) {
 			for _, file := range files {
 				refMap := file.RefMap()
 				for depPath, sourceList := range refMap {
+					var relSourcePaths []string
 					for _, source := range sourceList {
-						fmt.Printf("%s: %s => %s\n", c.BinPath(file), source.Path, depPath)
+						relSource, err := filepath.Rel(config.SrcDir, source.Path)
+						if err != nil {
+							log.Fatalf("Failed to get relative path: %v", err)
+						}
+						relSourcePaths = append(relSourcePaths, relSource)
 					}
+					relDep, err := filepath.Rel(config.SrcDir, depPath)
+					if err != nil {
+						log.Fatalf("Failed to get relative path: %v", err)
+					}
+					fmt.Printf("%s: %s <= %v\n", filepath.Base(c.BinPath(file)), relDep, relSourcePaths)
 				}
 			}
 		} else {
