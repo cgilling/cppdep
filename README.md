@@ -17,9 +17,10 @@ In order to automatically determine all source files needed to compile a binary,
 ## Usage
 
 ```shell
-cppdep [--platform] [--config CONFIG_PATH] [--fast] [--concurrency|-c VALUE] [BINARY_NAME]*
+cppdep [--version] [--platform] [--config CONFIG_PATH] [--fast] [--concurrency|-c VALUE] [BINARY_NAME]*
 ```
-* `--platform`: print out the name of the platform for this machine.
+* `--version`: prints out the version of the cppdep binary and exits.
+* `--platform`: prints out the name of the platform for this machine and exits.
 * `--config`: path to the yaml config file defining the parameters for the build. If not provided $CWD and all parent directories in order will be seaches for a cppdep.yml file.
 * `--fast`: Enable fast include scanning. This means that scanning a file for include statements will stop as soon as a line is found that is not a preprocessor statement, comment, or empty line. (Speeds up dependency phase by over 90% on typical projects)
 * `--concurrency`: maximum number of concurrent compiles. Also controls the number of files that will be concurrently scanned for dependencies.
