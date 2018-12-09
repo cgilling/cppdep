@@ -1,5 +1,5 @@
 # cppdep
-[![Build Status](https://travis-ci.org/cgilling/cppdep.svg?branch=master)](https://travis-ci.org/cgilling/cppdep)
+[![Build Status](https://travis-ci.org/cgilling/cppdep.svg?branch=master)](https://travis-ci.org/cgilling/cppdep) [![Coverage Status](https://coveralls.io/repos/github/cgilling/cppdep/badge.svg?branch=master)](https://coveralls.io/github/cgilling/cppdep?branch=master)
 
 Simple, fast automatic dependency discovery and compilation of an arbitrary C++ source tree.
 
