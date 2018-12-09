@@ -1,10 +1,5 @@
 language: go
 
-go:
-  - 1.10
-  - 1.11
-  - tip
-
 env:
   - PATH=$PATH:$GOPATH/bin
 before_install:
