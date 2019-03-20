@@ -522,7 +522,7 @@ func (f *File) DepList() []*File {
 	return dl
 }
 
-// DepList will return the list of paths for all dependencies of f. It will follow
+// DepListFollowSource will return the list of paths for all dependencies of f. It will follow
 // the ImplFiles of header files as well. Then intended use being that one could
 // find all the files needed to compile a main .cc file.
 func (f *File) DepListFollowSource() []*File {
