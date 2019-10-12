@@ -59,6 +59,7 @@ typegenerators:
 	defaultArgs := []string{
 		"cppdep",
 		"--fast",
+		"-v",
 		"--config",
 		confPath,
 	}
