@@ -116,6 +116,7 @@ func makeCommandAndRun(args []string) {
 	cmd.Spec = "[OPTIONS] [BINARY_NAMES]..."
 	platformFlag := cmd.BoolOpt("platform", false, "print out the name of the platform currently being run on")
 	versionFlag := cmd.BoolOpt("version", false, "print version string")
+	verboseFlag := cmd.BoolOpt("v verbose", false, "enable verbose logging")
 	configPath := cmd.StringOpt("config", "", "path to yaml config")
 	concurrency := cmd.IntOpt("c concurrency", 1, "How much concurrency to we want to allow")
 	mode := cmd.StringOpt("mode", "default", "select a build mode")
@@ -274,6 +275,7 @@ func makeCommandAndRun(args []string) {
 			IncludeDirs: st.IncludeDirs,
 			Flags:       flags,
 			Concurrency: *concurrency,
+			Verbose:     *verboseFlag,
 		}
 		var files []*cppdep.File
 		if *binaryNames == nil {

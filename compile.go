@@ -25,6 +25,9 @@ type Compiler struct {
 	OutputDir string
 
 	Concurrency int // the number of concurrent compiles
+
+	// Verbose when set to true will print out the compile statements being run
+	Verbose bool
 }
 
 // BinPath returns the path where the binary for a given main file will be written.
@@ -231,7 +234,12 @@ func (c *Compiler) makeObject(file *File) (path string, err error) {
 	if !supressLogging {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		fmt.Printf("Compiling: %s\n", filepath.Base(objectPath))
+		if c.Verbose {
+			fmt.Printf("%s\n", strings.Join(cmd.Args, " "))
+		} else {
+			fmt.Printf("Compiling: %s\n", filepath.Base(objectPath))
+		}
+
 	}
 	if makeObjectHook != nil {
 		makeObjectHook(file)
@@ -265,7 +273,11 @@ func (c *Compiler) makeBinary(file *File, objectPaths, libList []string) (path s
 	if !supressLogging {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		fmt.Printf("Compiling: %s\n", filepath.Base(binaryPath))
+		if c.Verbose {
+			fmt.Printf("%s\n", strings.Join(cmd.Args, " "))
+		} else {
+			fmt.Printf("Compiling: %s\n", filepath.Base(binaryPath))
+		}
 	}
 	if makeBinaryHook != nil {
 		makeBinaryHook(file)
