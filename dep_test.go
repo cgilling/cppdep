@@ -233,6 +233,9 @@ func TestFindMainFiles(t *testing.T) {
 
 	st = SourceTree{
 		SrcRoot: "test_files/find_main_files",
+		SourceLibs: map[string][]string{
+			"source_lib.h": []string{"source_lib_main.cc", "source_lib_a.cc"},
+		},
 	}
 	st.ProcessDirectory()
 	mainFiles, err = st.FindMainFiles()
