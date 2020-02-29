@@ -289,6 +289,7 @@ func (st *SourceTree) ProcessDirectory() error {
 				if hpath == file.Path {
 					for _, path := range implPaths {
 						if implFile, ok := seen[path]; ok {
+							implFile.IsSourceLib = true
 							file.ImplFiles = append(file.ImplFiles, implFile)
 						}
 					}
@@ -480,10 +481,12 @@ func (st *SourceTree) FindMainFiles() ([]*File, error) {
 			}
 		}()
 	}
+
 	for _, v := range inVectors {
-		if v.count == 0 {
-			fileCh <- v.file
+		if v.count > 0 || v.file.IsSourceLib {
+			continue
 		}
+		fileCh <- v.file
 	}
 	close(fileCh)
 	wg.Wait()
@@ -491,13 +494,14 @@ func (st *SourceTree) FindMainFiles() ([]*File, error) {
 }
 
 type File struct {
-	Path       string
-	Deps       []*File
-	Type       int
-	ImplFiles  []*File // the list of files that implement the functionality defined in this file
-	Libs       []string
-	ModTime    time.Time
-	BinaryName string
+	Path        string
+	Deps        []*File
+	Type        int
+	ImplFiles   []*File // the list of files that implement the functionality defined in this file
+	Libs        []string
+	ModTime     time.Time
+	BinaryName  string
+	IsSourceLib bool
 
 	// stMu used to ensure that only one goroutine is traversing the dependency
 	// tree at any one time.
